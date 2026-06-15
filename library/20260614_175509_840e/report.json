@@ -1,0 +1,67 @@
+{
+  "overall_score": 82,
+  "strongest_area": "Front leg extension",
+  "focus_area": "Lift your back leg so the line is level or oversplit \u2014 don't let it drop toward the floor. \u2014 leap (jet\u00e9-type) (0:00)",
+  "moves": [
+    {
+      "move_type": "leap (jet\u00e9-type)",
+      "timestamp": "0:00",
+      "overall_score": 82,
+      "scores": {
+        "front_leg_ext": 100,
+        "back_leg_ext": 100,
+        "back_leg_height": 0,
+        "point_feet": 91,
+        "split_angle": 82,
+        "torso_uprightness": 100,
+        "land_plie": 100,
+        "retire_dist": null,
+        "working_knee_fold": null,
+        "releve_height": null,
+        "vert_stack": null,
+        "seconde_height": null,
+        "seconde_knee_ext": null,
+        "arabesque_height": null,
+        "arabesque_knee_ext": null,
+        "support_knee_ext": null,
+        "arabesque_tilt": null,
+        "hold_duration_s": null,
+        "battement_height": null,
+        "battement_knee_ext": null,
+        "battement_tilt": null,
+        "plie_depth": null,
+        "plie_back_vertical": null,
+        "ankle_wobble": null,
+        "travel_distance": null,
+        "rotation_consistency": null,
+        "knee_oscillation": null,
+        "knee_extension_max": null,
+        "feet_together": null,
+        "ankle_join": null,
+        "tilt_angle": null,
+        "tilt_hold_s": null,
+        "tilt_leg_line": null
+      },
+      "raw_metrics": {
+        "front_leg_ext": 176.19278230856804,
+        "back_leg_ext": 174.7609452614676,
+        "point_foot_front": 172.45950529354002,
+        "point_foot_back": 157.78071062912827,
+        "point_feet": 157.78071062912827,
+        "split_angle": 150.81172825898915,
+        "torso_uprightness": 2.2055788641542646,
+        "back_leg_height": -0.4860113777830983,
+        "land_plie": 85.89642400383113
+      },
+      "top_cues": [
+        {
+          "cue_id": "level_the_leap",
+          "cue": "Lift your back leg so the line is level or oversplit \u2014 don't let it drop toward the floor.",
+          "why": "A dropped back leg collapses the line of the jump; the back leg should reach at least parallel to the floor for the leap to look balanced and powerful.",
+          "drill": "Arabesque press-backs and split holds focusing on lifting the back leg above hip height \u2014 practise slow grand battements back with a 2-second pause at the top.",
+          "score": 0
+        }
+      ]
+    }
+  ]
+}

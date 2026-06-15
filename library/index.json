@@ -1,0 +1,62 @@
+[
+  {
+    "id": "20260614_211311_6151",
+    "title": "Session 004 — Jun 14 2026",
+    "date": "2026-06-14",
+    "date_display": "Jun 14, 2026",
+    "duration_s": 6.6,
+    "overall_score": 0,
+    "move_counts": {
+      "jumps": 0,
+      "turns": 0,
+      "arabesques": 0
+    },
+    "theme": "pink",
+    "has_thumb": true
+  },
+  {
+    "id": "20260614_180533_d65b",
+    "title": "Session 003 — Jun 14 2026",
+    "date": "2026-06-14",
+    "date_display": "Jun 14, 2026",
+    "duration_s": 36.0,
+    "overall_score": 0,
+    "move_counts": {
+      "jumps": 2,
+      "turns": 0,
+      "arabesques": 0
+    },
+    "theme": "pink",
+    "has_thumb": true
+  },
+  {
+    "id": "20260614_175509_840e",
+    "title": "Session 002 — Jun 14 2026",
+    "date": "2026-06-14",
+    "date_display": "Jun 14, 2026",
+    "duration_s": 1.6,
+    "overall_score": 82,
+    "move_counts": {
+      "jumps": 1,
+      "turns": 0,
+      "arabesques": 0
+    },
+    "theme": "pink",
+    "has_thumb": true
+  },
+  {
+    "id": "20260614_175246_8153",
+    "title": "Session 001 — Jun 14 2026",
+    "date": "2026-06-14",
+    "date_display": "Jun 14, 2026",
+    "duration_s": 17.6,
+    "overall_score": 57,
+    "move_counts": {
+      "jumps": 0,
+      "turns": 1,
+      "arabesques": 0
+    },
+    "theme": "pink",
+    "has_thumb": true
+  }
+]

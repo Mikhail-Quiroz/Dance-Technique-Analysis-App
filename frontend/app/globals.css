@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+/* Zine palette */
+@theme {
+  --color-paper: #f5e6e0;
+  --color-surface: #ede0d8;
+  --color-accent: #e8568f;
+  --color-accent-deep: #c4376e;
+  --color-ink: #1a1008;
+  --color-dark-section: #2a1a12;
+}
+
+/* Google Fonts wired through next/font/google CSS variables */
+@theme inline {
+  --font-anton: var(--font-nf-anton);
+  --font-elite: var(--font-nf-elite);
+  --font-grotesk: var(--font-nf-grotesk);
+  --font-yellowtail: var(--font-nf-yellowtail);
+}
+
+:root {
+  --background: #f5e6e0;
+  --foreground: #1a1008;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-nf-grotesk, 'Space Grotesk', sans-serif);
+}
+
+/* Ink-border utility reused across the app */
+.ink-card {
+  border: 2px solid #1a1008;
+  border-radius: 2px;
+}
+
+/* Pink fill button (Tailwind class composition is in JSX, this is for base overrides) */
+input[type='text'],
+input[type='email'],
+input[type='password'] {
+  outline: none;
+}

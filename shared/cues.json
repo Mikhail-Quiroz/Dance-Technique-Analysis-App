@@ -1,0 +1,127 @@
+{
+  "straighten_front_leg": {
+    "cue": "Fully straighten your front leg at the top of the jump.",
+    "why": "A fully extended knee completes the line of the leap; a soft knee reads as unfinished even when height is good.",
+    "drill": "Lying leg lifts: extend through the knee and hold 3 s, focusing on engaging the quad to pull the kneecap up."
+  },
+  "straighten_back_leg": {
+    "cue": "Stretch your back leg long behind you.",
+    "why": "The back leg finishes the arc of a jeté; energy should reach through the toes.",
+    "drill": "Standing arabesque press-backs at the barre, 10 slow reps each side."
+  },
+  "point_feet": {
+    "cue": "Point through the ball of the foot the instant you leave the floor.",
+    "why": "Pointing extends your line and shows control; flexed feet break the silhouette. The push 'through demi-pointe' also adds height.",
+    "drill": "Theraband points: 3×15 slow reps through demi-pointe to full point each foot."
+  },
+  "bigger_split": {
+    "cue": "Brush the front leg higher and drive the back leg behind you.",
+    "why": "Split angle at the apex is what makes a grand jeté photograph — it comes from an aggressive brush (grand battement) plus hip flexibility.",
+    "drill": "Grand battements front and back, then supported split holds 30 s each side."
+  },
+  "lift_chest": {
+    "cue": "Keep your chest lifted at the top — don't pitch forward.",
+    "why": "An upright torso keeps the jump looking effortless and protects your landing alignment.",
+    "drill": "Sautés holding a high fifth-position arm focus, eyes forward."
+  },
+  "land_through_plie": {
+    "cue": "Land toe-ball-heel and melt into a deeper plié.",
+    "why": "Plié is your shock absorber — a stiff landing sends force into knees and shins and kills the flow into the next step. This is the #1 safety correction.",
+    "drill": "Slow landing drills: small sautés focusing only on silent, sequential landings."
+  },
+  "snap_to_passe": {
+    "cue": "Snap the working foot to the side of the supporting knee and keep it glued there.",
+    "why": "A high, fixed passé/retiré centers your mass over the supporting leg so the turn stays balanced.",
+    "drill": "Relevé-passé balances, 8 × 10 s holds without turning."
+  },
+  "press_releve": {
+    "cue": "Press higher onto relevé and stay there for the whole turn.",
+    "why": "A tall relevé reduces friction with the floor and stacks your weight over the ball of the foot.",
+    "drill": "Slow relevé rises at the barre, 3×10, pausing 2 s at the top."
+  },
+  "stack_alignment": {
+    "cue": "Stack shoulders over hips over your supporting foot.",
+    "why": "Tilting off the vertical axis is the most common reason a pirouette falls out — rotation can't be sustained off-axis.",
+    "drill": "Quarter- and half-turn pirouettes focusing only on finishing in perfect balance, before attempting full rotations."
+  },
+  "maintain_seconde_height": {
+    "cue": "Keep your working leg at hip height — don't let it drop as you turn.",
+    "why": "The à la seconde position must be maintained throughout the turn; a dropping leg shifts your center of mass sideways and collapses the line of the turn.",
+    "drill": "Standing à la seconde holds at the barre: lift the working leg to 90° and hold for 5 s, focusing on the hip flexor maintaining height. 10 reps each side."
+  },
+  "extend_seconde_leg": {
+    "cue": "Fully straighten your working leg in à la seconde — knee and foot completely extended.",
+    "why": "A bent working knee shortens the line and makes the à la seconde position look incomplete. The leg should reach away from you through a pointed toe.",
+    "drill": "Slow développé à la seconde at the barre: unfold the leg with control, finishing with a straight knee and fully pointed foot. 10 reps each side."
+  },
+  "lift_arabesque_leg": {
+    "cue": "Press your arabesque leg higher — imagine your heel is being pulled toward the ceiling.",
+    "why": "Height in arabesque comes from active hip extension and hamstring flexibility; a low leg signals unexploited range and weakens the line.",
+    "drill": "Barre arabesque lifts: press the leg up slowly, pause at maximum height for 5 s. 10 reps each side."
+  },
+  "straighten_standing_leg": {
+    "cue": "Fully straighten your standing leg — pull up through the quad so the knee locks.",
+    "why": "A bent standing leg drops your centre and makes the arabesque look unstable. A straight leg creates the clean vertical line the form requires.",
+    "drill": "Single-leg relevé holds (flat foot): fully extend the knee before lifting onto demi-pointe, hold 3 s. 3 × 10 each side."
+  },
+  "hold_developpe": {
+    "cue": "Hold the développé — reach the leg to full height and sustain it.",
+    "why": "A développé is not a kick; the unfolding motion must arrive at a sustained position that demonstrates control, strength, and flexibility.",
+    "drill": "Slow développé to full height at the barre, hold 5 s, lower with control. 10 reps each side. Add a 2-s relevé hold mid-extension as a progression."
+  },
+  "kick_higher": {
+    "cue": "Drive your leg higher at the top of the battement — brush it fast and reach for maximum height.",
+    "why": "Grand battement height comes from a fast, energized brush and hip flexibility; a lazy brush produces a low, unimpressive battement.",
+    "drill": "Battement tendu combinations: 16 slow tendus → 8 dégagés → 4 battements per direction. Build speed progressively."
+  },
+  "deepen_plie": {
+    "cue": "Sink deeper into your plié — let your heels descend and your weight drop through your legs.",
+    "why": "Full plié depth demonstrates flexibility and control; a shallow plié signals tension in the calves or inner thighs.",
+    "drill": "Slow grand plié series (5 counts down, 5 counts up) in all positions, focusing on sequential heel-ankle-knee release."
+  },
+  "track_knees_toes": {
+    "cue": "Push your knees directly over your toes as you plié — do not let them roll in.",
+    "why": "Knees tracking over toes maintains safe alignment and distributes load evenly across the knee joint.",
+    "drill": "Plié with a resistance band just above the knees: press outward against the band throughout the descent."
+  },
+  "hold_releve": {
+    "cue": "Hold the relevé without wobbling — find one still point and breathe.",
+    "why": "Relevé balance trains proprioception and single-leg stability that underpins pirouettes and all supported turns.",
+    "drill": "Relevé holds: rise to demi-pointe, hold 5 s × 5 reps each foot. Progress to eyes closed."
+  },
+  "travel_straight": {
+    "cue": "Travel in a perfectly straight line — pick a spot and drive toward it.",
+    "why": "Drifting in chaîné turns wastes momentum and looks uncontrolled. Straight-line travel shows precision.",
+    "drill": "Tape a straight line on the floor; practice chaînés keeping both feet on the tape."
+  },
+  "close_fifth_apex": {
+    "cue": "Squeeze your feet together at the top of the jump — land in a tight fifth.",
+    "why": "For changements and assemblés, the feet must visibly join at the peak; sloppy footwork undercuts the whole phrase.",
+    "drill": "Small sautés in fifth: focus on a crisp close at the top before landing. 3 × 16."
+  },
+  "extend_front_leg_timing": {
+    "cue": "Extend your front leg at the top of the jump, not before — let it unfold at the peak.",
+    "why": "For saut de chat, the leg should unfold at the apex for maximum visual impact; premature extension loses the développé illusion.",
+    "drill": "Practice the développé-in-the-air slowly: mark the takeoff, reach passé, then extend fully at the imagined peak."
+  },
+  "reach_legs_wide": {
+    "cue": "Push your legs as far apart as possible — think splits in the air.",
+    "why": "Toe touch impact comes entirely from the split angle; every degree of spread matters.",
+    "drill": "Seated straddle holds (30 s × 5) and standing leg swings (front to side, 20 each side)."
+  },
+  "whip_working_leg": {
+    "cue": "Whip the working leg out to à la seconde and snap it back to passé on every rotation.",
+    "why": "The fouetté works by the working leg's angular momentum being transferred to the body — a half-hearted whip kills the rotation.",
+    "drill": "Mark fouettés slowly: extend fully to à la seconde (pause), snap back to passé (pause). Speed up over 8 reps."
+  },
+  "maintain_tilt_line": {
+    "cue": "Keep the tilt angle consistent — don't let your hips drop or your leg sag.",
+    "why": "A tilt's impact is the clean diagonal line from foot to head; any sag in the hip or knee breaks the picture.",
+    "drill": "Barre tilts: hold the extreme angle for 3 s, focusing on pressing the hip forward and the leg back simultaneously."
+  },
+  "level_the_leap": {
+    "cue": "Lift your back leg so the line is level or oversplit — don't let it drop toward the floor.",
+    "why": "A dropped back leg collapses the line of the jump; the back leg should reach at least parallel to the floor for the leap to look balanced and powerful.",
+    "drill": "Arabesque press-backs and split holds focusing on lifting the back leg above hip height — practise slow grand battements back with a 2-second pause at the top."
+  }
+}

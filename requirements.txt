@@ -1,0 +1,7 @@
+mediapipe>=0.10.0
+opencv-python
+numpy
+streamlit
+pytest
+scipy
+Pillow>=9.0

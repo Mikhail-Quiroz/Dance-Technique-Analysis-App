@@ -1,0 +1,71 @@
+{
+  "overall_score": 57,
+  "strongest_area": "Relev\u00e9 height",
+  "focus_area": "Stack shoulders over hips over your supporting foot. \u2014 Turn \u00e0 la seconde (19 rotations) (0:00)",
+  "moves": [
+    {
+      "move_type": "Turn \u00e0 la seconde (19 rotations)",
+      "timestamp": "0:00",
+      "overall_score": 57,
+      "scores": {
+        "front_leg_ext": null,
+        "back_leg_ext": null,
+        "back_leg_height": null,
+        "point_feet": null,
+        "split_angle": null,
+        "torso_uprightness": null,
+        "land_plie": null,
+        "retire_dist": null,
+        "working_knee_fold": null,
+        "releve_height": 100,
+        "vert_stack": 28,
+        "seconde_height": 0,
+        "seconde_knee_ext": 100,
+        "arabesque_height": null,
+        "arabesque_knee_ext": null,
+        "support_knee_ext": null,
+        "arabesque_tilt": null,
+        "hold_duration_s": null,
+        "battement_height": null,
+        "battement_knee_ext": null,
+        "battement_tilt": null,
+        "plie_depth": null,
+        "plie_back_vertical": null,
+        "ankle_wobble": null,
+        "travel_distance": null,
+        "rotation_consistency": null,
+        "knee_oscillation": null,
+        "knee_extension_max": null,
+        "feet_together": null,
+        "ankle_join": null,
+        "tilt_angle": null,
+        "tilt_hold_s": null,
+        "tilt_leg_line": null
+      },
+      "raw_metrics": {
+        "releve_height": 0.06858815997838974,
+        "vert_stack": 0.12189731001853943,
+        "seconde_height": -0.2672155201435089,
+        "seconde_knee_ext": 169.4729077420389,
+        "retire_dist": null,
+        "working_knee_fold": null
+      },
+      "top_cues": [
+        {
+          "cue_id": "stack_alignment",
+          "cue": "Stack shoulders over hips over your supporting foot.",
+          "why": "Tilting off the vertical axis is the most common reason a pirouette falls out \u2014 rotation can't be sustained off-axis.",
+          "drill": "Quarter- and half-turn pirouettes focusing only on finishing in perfect balance, before attempting full rotations.",
+          "score": 28
+        },
+        {
+          "cue_id": "maintain_seconde_height",
+          "cue": "Keep your working leg at hip height \u2014 don't let it drop as you turn.",
+          "why": "The \u00e0 la seconde position must be maintained throughout the turn; a dropping leg shifts your center of mass sideways and collapses the line of the turn.",
+          "drill": "Standing \u00e0 la seconde holds at the barre: lift the working leg to 90\u00b0 and hold for 5 s, focusing on the hip flexor maintaining height. 10 reps each side.",
+          "score": 0
+        }
+      ]
+    }
+  ]
+}
