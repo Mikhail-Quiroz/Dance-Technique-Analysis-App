@@ -35,12 +35,6 @@ export default function Navbar({ email }: NavbarProps) {
           >
             Analyze
           </Link>
-          <Link
-            href="/diary"
-            className="font-elite text-sm text-ink hover:text-accent transition-colors"
-          >
-            Diary
-          </Link>
           <span className="font-elite text-xs text-ink opacity-50 hidden sm:block">
             {email}
           </span>

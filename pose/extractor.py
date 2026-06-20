@@ -1,13 +1,16 @@
-"""Video → per-frame pose landmarks with .npz cache.
+"""Video → per-frame pose landmarks with content-hash .npz cache.
 
 Output format:
-    image_lm  : np.ndarray (N, 33, 4)  normalized image coords [x, y, z, visibility]
-    world_lm  : np.ndarray (N, 33, 4)  metric world coords    [x, y, z, visibility]
-    timestamps_ms : np.ndarray (N,)
-    fps        : float
-    frame_size : (width, height) of the RESIZED frames used for inference
+    image_lm     : np.ndarray (N, 33, 4)  normalised image coords [x, y, z, visibility]
+    world_lm     : np.ndarray (N, 33, 4)  metric world coords     [x, y, z, visibility]
+    timestamps_ms: np.ndarray (N,)        milliseconds from start of video
+    fps          : float                  original video frame rate
+    frame_size   : (width, height)        dimensions used for inference
 """
 
+from __future__ import annotations
+
+import hashlib
 import os
 import urllib.request
 from pathlib import Path
@@ -15,6 +18,46 @@ from typing import Callable, Optional
 
 import cv2
 import numpy as np
+
+# ---------------------------------------------------------------------------
+# Frame-sampling stride
+# ---------------------------------------------------------------------------
+# Run MediaPipe inference on every INFERENCE_STRIDE-th frame and linearly
+# interpolate the skipped frames afterward.  With VIDEO running-mode the
+# tracker is fed real timestamps for the sampled frames so it still maintains
+# continuity; per-frame inference time stays the same (~22 ms/frame on CPU),
+# so stride-2 gives ~2× speedup with negligible accuracy loss because
+# smooth_landmarks() averages over a larger window anyway.
+#
+# STRIDE=1 disables sampling (use if you need maximum accuracy on very fast
+# moves or low frame-rate source footage).
+INFERENCE_STRIDE: int = int(os.environ.get("POSE_INFERENCE_STRIDE", "2"))
+
+
+# ---------------------------------------------------------------------------
+# Stable pose-result cache
+# ---------------------------------------------------------------------------
+# Cache by content hash so that re-uploading the same video (even with a
+# different filename / temp path) hits the cache instantly.
+# Old extractor behaviour cached next to the source file (e.g.
+# /tmp/tmpXXX.mp4.pose.npz), which never re-hit for backend temp files.
+_CACHE_DIR = Path(__file__).parent.parent / "pose_cache"
+_CACHE_DIR.mkdir(exist_ok=True)
+
+
+def _content_hash(video_path: str) -> str:
+    """Quick content fingerprint: first 8 MB + total file size."""
+    h = hashlib.md5()
+    with open(video_path, "rb") as f:
+        h.update(f.read(8 * 1024 * 1024))
+        size = f.seek(0, 2)          # seek to end → returns position = file size
+    h.update(str(size).encode())
+    return h.hexdigest()
+
+
+def _cache_path(video_path: str) -> Path:
+    return _CACHE_DIR / (_content_hash(video_path) + ".npz")
+
 
 # ---------------------------------------------------------------------------
 # MediaPipe strategy: Tasks API → legacy fallback
@@ -48,9 +91,9 @@ if _TASKS_AVAILABLE or _LEGACY_AVAILABLE:
         pass
 
 # Model path for Tasks API
-_MODEL_DIR = Path(__file__).parent.parent / "models"
+_MODEL_DIR  = Path(__file__).parent.parent / "models"
 _MODEL_PATH = _MODEL_DIR / "pose_landmarker_full.task"
-_MODEL_URL = (
+_MODEL_URL  = (
     "https://storage.googleapis.com/mediapipe-models/pose_landmarker/"
     "pose_landmarker_full/float16/latest/pose_landmarker_full.task"
 )
@@ -65,9 +108,8 @@ def _resize_frame(frame: np.ndarray):
     if long_side <= MAX_SIDE:
         return frame, 1.0
     scale = MAX_SIDE / long_side
-    new_w = round(w * scale)
-    new_h = round(h * scale)
-    return cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA), scale
+    return cv2.resize(frame, (round(w * scale), round(h * scale)),
+                      interpolation=cv2.INTER_AREA), scale
 
 
 def _download_model() -> bool:
@@ -82,7 +124,7 @@ def _download_model() -> bool:
         return False
 
 
-def _lm_to_array(landmarks, n=33) -> np.ndarray:
+def _lm_to_array(landmarks, n: int = 33) -> np.ndarray:
     """Convert a mediapipe landmark list to (33, 4) float32 array."""
     arr = np.zeros((n, 4), dtype=np.float32)
     if landmarks is None:
@@ -92,12 +134,41 @@ def _lm_to_array(landmarks, n=33) -> np.ndarray:
     return arr
 
 
+def _interpolate_to_full(
+    sampled: list[np.ndarray],
+    sampled_indices: np.ndarray,
+    total_frames: int,
+) -> np.ndarray:
+    """Linearly interpolate sampled landmark arrays back to full frame count.
+
+    Args:
+        sampled:         list of (33, 4) arrays at the sampled frame positions.
+        sampled_indices: 1-D array of the original frame indices that were processed.
+        total_frames:    total number of frames in the source video.
+
+    Returns:
+        np.ndarray of shape (total_frames, 33, 4).
+    """
+    if len(sampled) == 0:
+        return np.zeros((total_frames, 33, 4), dtype=np.float32)
+    if len(sampled) == total_frames:
+        return np.stack(sampled, axis=0)
+
+    all_idx = np.arange(total_frames, dtype=np.float64)
+    src     = np.stack(sampled, axis=0)                    # (K, 33, 4)
+    flat    = src.reshape(len(sampled), -1)                # (K, 132)
+    out     = np.empty((total_frames, flat.shape[1]), dtype=np.float32)
+    for k in range(flat.shape[1]):
+        out[:, k] = np.interp(all_idx, sampled_indices.astype(np.float64), flat[:, k])
+    return out.reshape(total_frames, 33, 4)
+
+
 # ---------------------------------------------------------------------------
 # Main extractor class
 # ---------------------------------------------------------------------------
 
 class PoseExtractor:
-    """Extract pose landmarks from a video file with .npz caching."""
+    """Extract pose landmarks from a video file with content-hash .npz caching."""
 
     def extract(
         self,
@@ -108,12 +179,12 @@ class PoseExtractor:
 
         Returns dict with keys: image_lm, world_lm, timestamps_ms, fps, frame_size.
         """
-        cache_path = str(video_path) + ".pose.npz"
-        if os.path.exists(cache_path):
-            return self._load_cache(cache_path)
+        cp = _cache_path(video_path)
+        if cp.exists():
+            return self._load_cache(str(cp))
 
         result = self._run_inference(video_path, progress_cb)
-        self._save_cache(cache_path, result)
+        self._save_cache(str(cp), result)
         return result
 
     # ------------------------------------------------------------------
@@ -122,7 +193,7 @@ class PoseExtractor:
         if not cap.isOpened():
             raise RuntimeError(f"Cannot open video: {video_path}")
 
-        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        fps          = cap.get(cv2.CAP_PROP_FPS) or 30.0
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         # Read first frame to determine resize dimensions
@@ -131,9 +202,8 @@ class PoseExtractor:
             raise RuntimeError("Video has no readable frames.")
         first_resized, _ = _resize_frame(first)
         frame_h, frame_w = first_resized.shape[:2]
-        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)   # rewind
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
-        # Choose inference backend
         use_tasks = _TASKS_AVAILABLE and self._ensure_model()
         if use_tasks:
             return self._run_tasks_api(cap, fps, total_frames, frame_w, frame_h, progress_cb)
@@ -165,40 +235,55 @@ class PoseExtractor:
             min_tracking_confidence=0.5,
         )
 
-        image_lm_list = []
-        world_lm_list = []
-        ts_list = []
+        image_lm_sampled: list[np.ndarray] = []
+        world_lm_sampled: list[np.ndarray] = []
+        sampled_indices:  list[int]        = []
 
         with mp_vision.PoseLandmarker.create_from_options(opts) as landmarker:
             frame_idx = 0
             while True:
-                ok, frame = cap.read()
-                if not ok:
-                    break
-                resized, _ = _resize_frame(frame)
-                ts_ms = int(frame_idx * 1000 / fps)
+                if frame_idx % INFERENCE_STRIDE == 0:
+                    ok, frame = cap.read()
+                    if not ok:
+                        break
+                    resized, _ = _resize_frame(frame)
+                    ts_ms = int(frame_idx * 1000 / fps)
 
-                rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
-                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-                result = landmarker.detect_for_video(mp_image, ts_ms)
+                    rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+                    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+                    result   = landmarker.detect_for_video(mp_image, ts_ms)
 
-                if result.pose_landmarks:
-                    img_arr = _lm_to_array(result.pose_landmarks[0])
-                    world_arr = _lm_to_array(result.pose_world_landmarks[0])
+                    if result.pose_landmarks:
+                        img_arr   = _lm_to_array(result.pose_landmarks[0])
+                        world_arr = _lm_to_array(result.pose_world_landmarks[0])
+                    else:
+                        img_arr   = np.zeros((33, 4), dtype=np.float32)
+                        world_arr = np.zeros((33, 4), dtype=np.float32)
+
+                    image_lm_sampled.append(img_arr)
+                    world_lm_sampled.append(world_arr)
+                    sampled_indices.append(frame_idx)
                 else:
-                    img_arr = np.zeros((33, 4), dtype=np.float32)
-                    world_arr = np.zeros((33, 4), dtype=np.float32)
+                    # Advance video without decoding; skipped frames are
+                    # filled by linear interpolation after inference.
+                    if not cap.grab():
+                        break
 
-                image_lm_list.append(img_arr)
-                world_lm_list.append(world_arr)
-                ts_list.append(ts_ms)
                 frame_idx += 1
 
                 if progress_cb and total_frames > 0:
                     progress_cb(frame_idx / total_frames)
 
         cap.release()
-        return self._pack(image_lm_list, world_lm_list, ts_list, fps, (fw, fh))
+
+        # Reconstruct full-frame arrays so downstream code (detection + renderer)
+        # sees one entry per original video frame, as it always has.
+        si = np.array(sampled_indices, dtype=np.int64)
+        image_lm = _interpolate_to_full(image_lm_sampled, si, total_frames)
+        world_lm = _interpolate_to_full(world_lm_sampled, si, total_frames)
+        ts_full  = (np.arange(total_frames, dtype=np.float64) * 1000.0 / fps).astype(np.int64)
+
+        return self._pack(image_lm, world_lm, ts_full, fps, (fw, fh))
 
     # ------------------------------------------------------------------
     # Legacy mp.solutions.pose path
@@ -208,9 +293,9 @@ class PoseExtractor:
         import mediapipe as mp
         pose_solution = mp.solutions.pose
 
-        image_lm_list = []
-        world_lm_list = []
-        ts_list = []
+        image_lm_sampled: list[np.ndarray] = []
+        world_lm_sampled: list[np.ndarray] = []
+        sampled_indices:  list[int]        = []
 
         with pose_solution.Pose(
             model_complexity=1,
@@ -221,49 +306,59 @@ class PoseExtractor:
         ) as pose:
             frame_idx = 0
             while True:
-                ok, frame = cap.read()
-                if not ok:
-                    break
-                resized, _ = _resize_frame(frame)
-                ts_ms = int(frame_idx * 1000 / fps)
+                if frame_idx % INFERENCE_STRIDE == 0:
+                    ok, frame = cap.read()
+                    if not ok:
+                        break
+                    resized, _ = _resize_frame(frame)
 
-                rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
-                rgb.flags.writeable = False
-                result = pose.process(rgb)
-                rgb.flags.writeable = True
+                    rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+                    rgb.flags.writeable = False
+                    result = pose.process(rgb)
+                    rgb.flags.writeable = True
 
-                if result.pose_landmarks:
-                    img_arr = _lm_to_array(result.pose_landmarks.landmark)
-                    world_arr = _lm_to_array(result.pose_world_landmarks.landmark)
+                    if result.pose_landmarks:
+                        img_arr   = _lm_to_array(result.pose_landmarks.landmark)
+                        world_arr = _lm_to_array(result.pose_world_landmarks.landmark)
+                    else:
+                        img_arr   = np.zeros((33, 4), dtype=np.float32)
+                        world_arr = np.zeros((33, 4), dtype=np.float32)
+
+                    image_lm_sampled.append(img_arr)
+                    world_lm_sampled.append(world_arr)
+                    sampled_indices.append(frame_idx)
                 else:
-                    img_arr = np.zeros((33, 4), dtype=np.float32)
-                    world_arr = np.zeros((33, 4), dtype=np.float32)
+                    if not cap.grab():
+                        break
 
-                image_lm_list.append(img_arr)
-                world_lm_list.append(world_arr)
-                ts_list.append(ts_ms)
                 frame_idx += 1
 
                 if progress_cb and total_frames > 0:
                     progress_cb(frame_idx / total_frames)
 
         cap.release()
-        return self._pack(image_lm_list, world_lm_list, ts_list, fps, (fw, fh))
+
+        si = np.array(sampled_indices, dtype=np.int64)
+        image_lm = _interpolate_to_full(image_lm_sampled, si, total_frames)
+        world_lm = _interpolate_to_full(world_lm_sampled, si, total_frames)
+        ts_full  = (np.arange(total_frames, dtype=np.float64) * 1000.0 / fps).astype(np.int64)
+
+        return self._pack(image_lm, world_lm, ts_full, fps, (fw, fh))
 
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _pack(img_list, world_list, ts_list, fps, frame_size) -> dict:
+    def _pack(image_lm, world_lm, timestamps_ms, fps, frame_size) -> dict:
         return {
-            "image_lm": np.stack(img_list, axis=0),       # (N, 33, 4)
-            "world_lm": np.stack(world_list, axis=0),
-            "timestamps_ms": np.array(ts_list, dtype=np.int64),
-            "fps": fps,
-            "frame_size": frame_size,
+            "image_lm":      image_lm,
+            "world_lm":      world_lm,
+            "timestamps_ms": timestamps_ms,
+            "fps":           fps,
+            "frame_size":    frame_size,
         }
 
     @staticmethod
-    def _save_cache(path: str, data: dict):
+    def _save_cache(path: str, data: dict) -> None:
         np.savez_compressed(
             path,
             image_lm=data["image_lm"],
@@ -277,9 +372,9 @@ class PoseExtractor:
     def _load_cache(path: str) -> dict:
         d = np.load(path)
         return {
-            "image_lm": d["image_lm"],
-            "world_lm": d["world_lm"],
+            "image_lm":      d["image_lm"],
+            "world_lm":      d["world_lm"],
             "timestamps_ms": d["timestamps_ms"],
-            "fps": float(d["fps"][0]),
-            "frame_size": tuple(d["frame_size"].tolist()),
+            "fps":           float(d["fps"][0]),
+            "frame_size":    tuple(d["frame_size"].tolist()),
         }

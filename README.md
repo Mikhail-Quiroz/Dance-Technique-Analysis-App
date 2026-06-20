@@ -26,6 +26,13 @@ pip install -r requirements.txt
 > all supported Python versions. If mediapipe itself won't install, create a virtual
 > environment using Python 3.11 or 3.12 instead.
 
+> **ffmpeg (recommended for fast video encoding):** The annotated video export uses
+> ffmpeg (libx264) when available, and falls back to OpenCV's VideoWriter otherwise.
+> Install ffmpeg for faster, more reliable H.264 output:
+> - macOS: `brew install ffmpeg`
+> - Ubuntu/Debian: `sudo apt install ffmpeg`
+> - Windows: download from <https://ffmpeg.org/download.html> and add the `bin/` folder to your PATH
+
 ---
 
 ## Run
