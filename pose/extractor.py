@@ -174,12 +174,17 @@ class PoseExtractor:
         self,
         video_path: str,
         progress_cb: Optional[Callable[[float], None]] = None,
+        cache_key: Optional[str] = None,
     ) -> dict:
         """Run pose inference or load from cache.
 
+        cache_key overrides the default content-hash cache name — used when
+        video_path is a transcoded working copy but the cache should be keyed
+        by the original upload (so re-uploads hit without re-transcoding).
+
         Returns dict with keys: image_lm, world_lm, timestamps_ms, fps, frame_size.
         """
-        cp = _cache_path(video_path)
+        cp = (_CACHE_DIR / f"{cache_key}.npz") if cache_key else _cache_path(video_path)
         if cp.exists():
             return self._load_cache(str(cp))
 

@@ -40,9 +40,9 @@ SESSION_A = {
 
 
 def _empty_chain() -> MagicMock:
-    """Chainable query mock whose execute() always returns data=None."""
+    """Chainable query mock whose execute() always returns data=[] (empty)."""
     empty_result = MagicMock()
-    empty_result.data = None
+    empty_result.data = []
     empty_result.count = 0
 
     chain = MagicMock()
@@ -52,16 +52,17 @@ def _empty_chain() -> MagicMock:
     chain.insert.return_value = chain
     chain.order.return_value = chain
     chain.eq.return_value = chain
-    chain.single.return_value.execute.return_value = empty_result
+    chain.limit.return_value = chain
+    chain.single.return_value.execute.side_effect = Exception("0 rows")
     chain.execute.return_value = empty_result
     return chain
 
 
-def _data_chain(data: dict) -> MagicMock:
-    """Chainable query mock whose execute() returns the given data dict."""
+def _data_chain(data) -> MagicMock:
+    """Chainable query mock whose execute() returns the given data (dict or list)."""
     result = MagicMock()
     result.data = data
-    result.count = 1
+    result.count = 1 if data else 0
 
     chain = MagicMock()
     chain.select.return_value = chain
@@ -70,6 +71,7 @@ def _data_chain(data: dict) -> MagicMock:
     chain.insert.return_value = chain
     chain.order.return_value = chain
     chain.eq.return_value = chain
+    chain.limit.return_value = chain
     chain.single.return_value.execute.return_value = result
     chain.execute.return_value = result
     return chain
@@ -155,7 +157,12 @@ def test_user_b_cannot_rename_user_a_session(client):
 
 
 def test_user_b_cannot_delete_user_a_session(client):
-    """DELETE /sessions/{id} as user B for a session owned by user A → 404."""
+    """DELETE /sessions/{id} as user B for a session owned by user A → 200 (idempotent).
+
+    The handler filters by user_id so user B finds 0 rows and returns {"ok": True}
+    immediately — A's session is never touched.  200 is the correct idempotent HTTP
+    response for DELETE when the resource isn't visible to the requester.
+    """
     from main import app
 
     _override_as(app, USER_B, _build_mock_supabase_empty())
@@ -164,9 +171,59 @@ def test_user_b_cannot_delete_user_a_session(client):
     finally:
         _clear_overrides(app)
 
-    assert resp.status_code == 404, (
-        f"Expected 404 but got {resp.status_code}: {resp.text}"
+    assert resp.status_code == 200, (
+        f"Expected 200 (idempotent) but got {resp.status_code}: {resp.text}"
     )
+
+
+def test_user_a_can_delete_own_session(client):
+    """DELETE /sessions/{id} as user A for their own session → 200.
+
+    Verifies the full delete flow: jobs FK is nullified, Storage removes are called,
+    and the DB row is deleted.  Uses a mock that returns a list from limit(1) (matching
+    what the real Supabase client returns for non-single queries).
+    """
+    from main import app
+
+    # The SELECT uses limit(1) so resp.data is a list, not a dict.
+    session_paths = [{"video_path": SESSION_A["video_path"], "thumb_path": SESSION_A["thumb_path"]}]
+
+    select_result = MagicMock()
+    select_result.data = session_paths
+
+    # All mutations return a benign empty-list result (handler doesn't inspect them).
+    mutation_result = MagicMock()
+    mutation_result.data = []
+
+    # Capture execute() call sequence so we can return the right result per call.
+    execute_results = [select_result, mutation_result, mutation_result]
+    execute_iter = iter(execute_results)
+
+    chain = MagicMock()
+    chain.select.return_value = chain
+    chain.update.return_value = chain
+    chain.delete.return_value = chain
+    chain.order.return_value = chain
+    chain.eq.return_value = chain
+    chain.limit.return_value = chain
+    chain.execute.side_effect = lambda: next(execute_iter)
+
+    mock = MagicMock()
+    mock.table.return_value = chain
+    mock.storage.from_.return_value.remove.return_value = None
+
+    _override_as(app, USER_A, mock)
+    try:
+        resp = client.delete(f"/sessions/{SESSION_A['id']}")
+    finally:
+        _clear_overrides(app)
+
+    assert resp.status_code == 200, (
+        f"Expected 200 but got {resp.status_code}: {resp.text}"
+    )
+    assert resp.json() == {"ok": True}
+    # Storage removes should have been attempted for both video and thumb.
+    assert mock.storage.from_.return_value.remove.call_count == 2
 
 
 def test_user_a_can_get_own_session(client):

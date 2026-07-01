@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse
 from supabase import Client
 
 from core.auth import get_current_user, _admin_client
+from core.config import settings
 from core.pipeline import JOB_RESULTS_DIR
 
 router = APIRouter()
@@ -26,6 +27,31 @@ async def get_job(
     supabase: Client = Depends(_admin_client),
 ) -> dict:
     """Return job status, progress, and (when done) the full report + video URL."""
+    if settings.local_mode:
+        from core.local_store import get_job as get_local_job
+
+        job = get_local_job(job_id)
+        if not job or job.get("user_id") != user["id"]:
+            raise HTTPException(404, "Job not found")
+
+        result = None
+        if job["status"] == "done":
+            report_path = JOB_RESULTS_DIR / job_id / "report.json"
+            if report_path.exists():
+                report = json.loads(report_path.read_text(encoding="utf-8"))
+                result = {
+                    "report":     report,
+                    "video_path": f"/jobs/{job_id}/video",
+                }
+
+        return {
+            "status":  job["status"],
+            "stage":   job.get("stage"),
+            "percent": job.get("percent", 0),
+            "error":   job.get("error"),
+            "result":  result,
+        }
+
     try:
         resp = (
             supabase.table("jobs")
@@ -98,6 +124,23 @@ async def get_job_video(
     an HTML <video src="...?token=<jwt>"> element can request range-based
     streaming without custom fetch logic.
     """
+    if settings.local_mode:
+        from core.local_store import get_job as get_local_job
+
+        job = get_local_job(job_id)
+        if not job or job.get("status") != "done":
+            raise HTTPException(404, "Job not found")
+
+        video_path = JOB_RESULTS_DIR / job_id / "annotated.mp4"
+        if not video_path.exists():
+            raise HTTPException(404, "Video not available for this job")
+
+        return FileResponse(
+            str(video_path),
+            media_type="video/mp4",
+            headers={"Cache-Control": "private, max-age=3600"},
+        )
+
     bearer = authorization[7:] if (authorization or "").startswith("Bearer ") else None
     actual_token = bearer or token
     if not actual_token:

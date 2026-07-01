@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { LOCAL_MODE, LOCAL_TOKEN } from '@/lib/local-mode'
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8000'
 
@@ -106,9 +107,9 @@ function ProgressBar({ stage, percent }: { stage: string; percent: number }) {
         </span>
         <span className="font-anton text-2xl text-accent">{percent}%</span>
       </div>
-      <div className="h-5 border-2 border-ink bg-paper overflow-hidden">
+      <div className="h-2.5 bg-paper rounded-full overflow-hidden">
         <div
-          className="h-full bg-accent transition-all duration-500"
+          className="h-full bg-accent transition-all duration-500 rounded-full"
           style={{ width: `${percent}%` }}
         />
       </div>
@@ -118,12 +119,12 @@ function ProgressBar({ stage, percent }: { stage: string; percent: number }) {
 
 export function CueCard({ cue }: { cue: Cue }) {
   return (
-    <div className="border-2 border-ink bg-paper p-4 shadow-[3px_3px_0_#1a1008] space-y-1">
-      <p className="font-elite text-xs uppercase tracking-widest text-accent-deep">
+    <div className="bg-surface border-2 border-ink p-4 space-y-2">
+      <p className="font-grotesk text-sm font-semibold text-ink leading-snug">
         {cue.cue}
       </p>
-      <p className="font-grotesk text-sm text-ink">{cue.why}</p>
-      <p className="font-elite text-xs text-ink opacity-70 border-t border-ink pt-1 mt-1">
+      <p className="font-grotesk text-base text-ink leading-relaxed">{cue.why}</p>
+      <p className="font-grotesk text-sm text-muted border-t border-ink/10 pt-2 mt-1">
         Drill: {cue.drill}
       </p>
     </div>
@@ -135,10 +136,10 @@ export function MoveAccordion({ move, index }: { move: Move; index: number }) {
   const scored = Object.entries(move.scores).filter(([, v]) => v !== null)
 
   return (
-    <div className="border-2 border-ink bg-surface">
+    <div className="bg-surface border-2 border-ink overflow-hidden">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 active:bg-ink active:text-paper"
+        className="w-full flex items-center justify-between px-4 py-3 active:bg-accent active:text-paper"
       >
         <span className="font-anton text-sm uppercase tracking-wide text-left">
           Move {index} · {move.move_type}{' '}
@@ -150,24 +151,24 @@ export function MoveAccordion({ move, index }: { move: Move; index: number }) {
       </button>
 
       {open && (
-        <div className="border-t-2 border-ink px-4 py-3 space-y-2">
+        <div className="border-t border-ink/10 px-4 py-3 space-y-2">
           {move.raw_metrics['accuracy_note'] && (
-            <p className="font-elite text-xs text-ink opacity-60">
+            <p className="font-elite text-xs text-muted">
               {String(move.raw_metrics['accuracy_note'])}
             </p>
           )}
           <div className="overflow-x-auto">
             <table className="w-full text-xs font-grotesk border-collapse">
               <thead>
-                <tr className="border-b-2 border-ink">
-                  <th className="text-left py-1 pr-4 font-elite uppercase tracking-wider">Metric</th>
-                  <th className="text-right py-1 font-elite uppercase tracking-wider">Score</th>
+                <tr className="border-b border-ink/20">
+                  <th className="text-left py-1 pr-4 font-elite uppercase tracking-wider text-muted">Metric</th>
+                  <th className="text-right py-1 font-elite uppercase tracking-wider text-muted">Score</th>
                 </tr>
               </thead>
               <tbody>
                 {scored.map(([k, v]) => (
-                  <tr key={k} className="border-b border-ink border-opacity-20">
-                    <td className="py-1 pr-4 text-ink opacity-80">{metricLabel(k)}</td>
+                  <tr key={k} className="border-b border-ink/10">
+                    <td className="py-1 pr-4 text-ink/80">{metricLabel(k)}</td>
                     <td className="py-1 text-right font-elite text-ink">{v}/100</td>
                   </tr>
                 ))}
@@ -202,19 +203,19 @@ export function Results({
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="font-anton text-4xl sm:text-5xl text-ink uppercase tracking-widest">
+        <h1 className="font-anton text-3xl text-ink uppercase tracking-widest">
           Results
         </h1>
         <button
           onClick={onReset}
-          className="font-elite text-sm border-2 border-ink px-4 py-2 hover:bg-ink hover:text-paper active:bg-ink active:text-paper transition-colors"
+          className="font-elite text-sm text-muted hover:text-accent transition-colors"
         >
           ← New video
         </button>
       </div>
 
       {report.no_moves_detected && (
-        <div className="border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_#1a1008]">
+        <div className="bg-surface border-2 border-ink p-5">
           <p className="font-elite text-sm uppercase tracking-widest text-accent-deep mb-1">
             No Dance Detected
           </p>
@@ -230,17 +231,17 @@ export function Results({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { label: 'Score',          value: `${report.overall_score}/100` },
-            { label: 'Strongest Area', value: report.strongest_area },
-            { label: '#1 Focus',       value: report.focus_area },
+            { label: 'Strongest Area', value: report.strongest_area         },
+            { label: '#1 Focus',       value: report.focus_area             },
           ].map(({ label, value }) => (
-            <div
-              key={label}
-              className="border-2 border-ink bg-surface p-4 shadow-[3px_3px_0_#1a1008]"
-            >
-              <p className="font-elite text-xs uppercase tracking-widest text-ink opacity-60 mb-1">
+            <div key={label} className="bg-surface border-2 border-ink shadow-hard p-5">
+              <div
+                className="inline-block bg-accent text-paper font-elite text-xs uppercase tracking-wider px-3 py-1 mb-3"
+                style={{ transform: 'rotate(-2deg)' }}
+              >
                 {label}
-              </p>
-              <p className="font-grotesk text-sm text-ink font-medium">{value}</p>
+              </div>
+              <p className="font-grotesk text-xl text-ink font-semibold">{value}</p>
             </div>
           ))}
         </div>
@@ -250,33 +251,36 @@ export function Results({
         <div className="flex flex-col md:flex-row gap-6">
           <div className="md:w-2/5 flex-shrink-0">
             <div
-              className="border-4 border-ink bg-paper p-2 shadow-[6px_6px_0_#1a1008]"
-              style={{ transform: 'rotate(-1.2deg)' }}
+              className="bg-surface border-2 border-ink shadow-hard-lg p-2"
+              style={{ transform: 'rotate(-2deg)' }}
             >
               {videoUrl ? (
                 <video
                   src={videoUrl}
                   controls
                   playsInline
-                  className="w-full border border-ink"
+                  className="w-full"
                 />
               ) : (
-                <div className="w-full aspect-video bg-dark-section flex items-center justify-center border border-ink">
+                <div className="w-full aspect-video bg-dark-section flex items-center justify-center">
                   <span className="font-elite text-xs text-paper opacity-40">
                     video not available
                   </span>
                 </div>
               )}
-              <p className="font-elite text-xs text-center text-ink opacity-50 mt-2">
+              <p className="font-elite text-xs text-center text-muted mt-2">
                 annotated · {report.moves.length} move{report.moves.length !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
 
           <div className="flex-1 space-y-3">
-            <p className="font-elite text-xs uppercase tracking-widest text-ink opacity-60">
-              {topCues.length > 0 ? 'Top Corrections' : 'Great Technique Throughout!'}
-            </p>
+            <div
+              className="inline-block bg-accent text-paper font-elite text-xs uppercase tracking-wider px-3 py-1 mb-1 border-2 border-ink shadow-[2px_2px_0_#1B2330]"
+              style={{ transform: 'rotate(-2deg)' }}
+            >
+              {topCues.length > 0 ? 'Top Corrections' : 'Great Technique!'}
+            </div>
             {topCues.map((cue) => (
               <CueCard key={cue.cue_id} cue={cue} />
             ))}
@@ -286,7 +290,7 @@ export function Results({
 
       {report.moves.length > 0 && (
         <div className="space-y-2">
-          <p className="font-elite text-xs uppercase tracking-widest text-ink opacity-60 mb-3">
+          <p className="font-elite text-xs uppercase tracking-widest text-muted mb-3">
             Move Metrics
           </p>
           {report.moves.map((move, i) => (
@@ -317,9 +321,9 @@ function StarburstDoodle() {
         const angle = (i * 30 * Math.PI) / 180
         const x2 = 40 + 35 * Math.cos(angle)
         const y2 = 40 + 35 * Math.sin(angle)
-        return <line key={i} x1="40" y1="40" x2={x2} y2={y2} stroke="#1a1008" strokeWidth="2" />
+        return <line key={i} x1="40" y1="40" x2={x2} y2={y2} stroke="#2074C4" strokeWidth="2" />
       })}
-      <circle cx="40" cy="40" r="6" fill="#1a1008" />
+      <circle cx="40" cy="40" r="6" fill="#2074C4" />
     </svg>
   )
 }
@@ -328,9 +332,9 @@ function EmptyDiaryState() {
   return (
     <div className="flex flex-col items-center gap-4 py-12 text-center">
       <StarburstDoodle />
-      <p className="font-yellowtail text-3xl text-ink opacity-50">Nothing here yet</p>
-      <p className="font-elite text-xs text-ink opacity-40 uppercase tracking-widest">
-        Upload a video above to start your diary
+      <p className="font-yellowtail text-3xl text-ink/50">Nothing here yet</p>
+      <p className="font-elite text-xs text-muted uppercase tracking-widest">
+        Upload a video above to start your sessions
       </p>
     </div>
   )
@@ -349,7 +353,6 @@ function SessionCard({
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // Close menu on outside click
   useEffect(() => {
     if (!menuOpen) return
     function handle(e: MouseEvent) {
@@ -365,16 +368,16 @@ function SessionCard({
 
   return (
     <div
-      className="relative group border-2 border-ink bg-surface shadow-[3px_3px_0_#1a1008]
-                 cursor-pointer transition-transform duration-150
-                 hover:-rotate-1 active:rotate-0 active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+      className="relative group bg-surface border-2 border-ink cursor-pointer
+                 transition-all duration-150 hover:-translate-y-0.5
+                 active:translate-y-0"
       onClick={() => router.push(`/session/${session.id}`)}
       role="link"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') router.push(`/session/${session.id}`) }}
     >
       {/* Thumbnail */}
-      <div className="aspect-[4/3] overflow-hidden border-b-2 border-ink bg-dark-section">
+      <div className="aspect-[4/3] overflow-hidden bg-dark-section">
         {session.thumb_url ? (
           <img
             src={session.thumb_url}
@@ -395,8 +398,8 @@ function SessionCard({
       {score !== null && score !== undefined && (
         <div
           className="absolute top-2 right-2 bg-accent text-paper font-grotesk font-bold
-                     text-xs px-2 py-1 border border-accent-deep shadow-[2px_2px_0_#1a1008]"
-          style={{ transform: 'rotate(3deg)' }}
+                     text-xs px-2 py-0.5 border border-accent-deep shadow-[2px_2px_0_#1B2330]"
+          style={{ transform: 'rotate(-2deg)' }}
           aria-label={`Score ${score}`}
         >
           {score} ★
@@ -405,15 +408,13 @@ function SessionCard({
 
       {/* Card body */}
       <div className="p-3 space-y-1">
-        {/* Title — letter chips */}
         <p
           className="font-elite text-xs uppercase tracking-widest text-ink leading-tight line-clamp-2 min-h-[2.5rem]"
           title={session.title}
         >
           {session.title}
         </p>
-        {/* Date */}
-        <p className="font-elite text-xs text-ink opacity-50">
+        <p className="font-elite text-xs text-muted">
           {formatDate(session.created_at)}
         </p>
       </div>
@@ -427,7 +428,7 @@ function SessionCard({
       >
         <button
           onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o) }}
-          className="w-7 h-7 flex items-center justify-center border border-ink bg-paper
+          className="w-7 h-7 flex items-center justify-center bg-paper border-2 border-ink
                      font-grotesk text-ink text-sm opacity-0 group-hover:opacity-100
                      focus:opacity-100 transition-opacity"
           aria-label="Session options"
@@ -435,15 +436,15 @@ function SessionCard({
           ⋮
         </button>
         {menuOpen && (
-          <div className="absolute bottom-8 right-0 bg-paper border-2 border-ink shadow-[3px_3px_0_#1a1008] min-w-[120px] z-10">
+          <div className="absolute bottom-8 right-0 bg-surface border-2 border-ink shadow-hard min-w-[120px] z-10 overflow-hidden">
             <button
               onClick={(e) => {
                 e.stopPropagation()
                 setMenuOpen(false)
                 onRename(session.id, session.title)
               }}
-              className="w-full text-left px-3 py-2 font-elite text-xs uppercase tracking-wide
-                         text-ink hover:bg-ink hover:text-paper transition-colors"
+              className="w-full text-left px-3 py-2.5 font-elite text-xs uppercase tracking-wide
+                         text-ink hover:bg-paper transition-colors"
             >
               Rename
             </button>
@@ -453,8 +454,8 @@ function SessionCard({
                 setMenuOpen(false)
                 onDelete(session.id)
               }}
-              className="w-full text-left px-3 py-2 font-elite text-xs uppercase tracking-wide
-                         text-accent-deep hover:bg-accent hover:text-paper transition-colors"
+              className="w-full text-left px-3 py-2.5 font-elite text-xs uppercase tracking-wide
+                         bg-accent text-paper hover:bg-accent-deep transition-colors border-t-2 border-ink"
             >
               Delete
             </button>
@@ -470,34 +471,37 @@ function DiaryGrid({
   loading,
   onRename,
   onDelete,
+  onDeleteAll,
 }: {
   sessions: SessionSummary[]
   loading: boolean
   onRename: (id: string, currentTitle: string) => void
   onDelete: (id: string) => void
+  onDeleteAll: () => void
 }) {
-  if (loading) {
-    return (
-      <section>
-        <h2 className="font-anton text-4xl text-ink uppercase tracking-widest mb-6">
-          My Diary
-        </h2>
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="font-anton text-3xl text-ink uppercase tracking-widest">Sessions</h2>
+        {!loading && sessions.length > 0 && (
+          <button
+            onClick={onDeleteAll}
+            className="font-elite text-xs uppercase tracking-wider border-2 border-ink
+                       text-ink px-4 py-1.5 hover:bg-ink hover:text-paper transition-colors shadow-hard"
+          >
+            Delete all
+          </button>
+        )}
+      </div>
+
+      {loading ? (
         <div className="flex items-center gap-3 py-8">
-          <div className="w-5 h-5 border-2 border-ink border-t-transparent rounded-full animate-spin" />
-          <span className="font-elite text-xs text-ink opacity-50 uppercase tracking-widest">
+          <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <span className="font-elite text-xs text-muted uppercase tracking-widest">
             Loading sessions…
           </span>
         </div>
-      </section>
-    )
-  }
-
-  return (
-    <section>
-      <h2 className="font-anton text-4xl text-ink uppercase tracking-widest mb-6">
-        My Diary
-      </h2>
-      {sessions.length === 0 ? (
+      ) : sessions.length === 0 ? (
         <EmptyDiaryState />
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -529,8 +533,8 @@ function RenameModal({
   const [value, setValue] = useState(initialTitle)
 
   return (
-    <div className="fixed inset-0 bg-ink bg-opacity-50 flex items-center justify-center z-50 px-4">
-      <div className="bg-paper border-2 border-ink shadow-[6px_6px_0_#1a1008] p-6 w-full max-w-sm space-y-4">
+    <div className="fixed inset-0 bg-ink/50 flex items-center justify-center z-50 px-4">
+      <div className="bg-surface border-2 border-ink shadow-hard p-6 w-full max-w-sm space-y-4">
         <p className="font-anton text-xl text-ink uppercase tracking-widest">Rename Session</p>
         <input
           autoFocus
@@ -540,21 +544,23 @@ function RenameModal({
             if (e.key === 'Enter') onConfirm(value.trim())
             if (e.key === 'Escape') onCancel()
           }}
-          className="w-full border-2 border-ink bg-surface px-3 py-2 font-grotesk text-sm text-ink"
+          className="w-full border-2 border-ink bg-paper px-3 py-2.5 font-grotesk text-sm text-ink focus:border-accent transition-colors"
         />
         <div className="flex gap-3 justify-end">
           <button
             onClick={onCancel}
-            className="font-elite text-xs uppercase tracking-widest border-2 border-ink px-4 py-2
-                       hover:bg-ink hover:text-paper transition-colors"
+            className="font-elite text-xs uppercase tracking-widest px-4 py-2
+                       border-2 border-ink text-ink hover:bg-ink hover:text-paper transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={() => onConfirm(value.trim())}
             disabled={!value.trim()}
-            className="font-elite text-xs uppercase tracking-widest border-2 border-ink px-4 py-2
-                       bg-accent text-paper hover:bg-accent-deep transition-colors
+            style={{ transform: 'rotate(-2deg)' }}
+            className="font-elite text-xs uppercase tracking-widest px-4 py-2
+                       bg-accent text-paper border-2 border-ink shadow-hard
+                       hover:bg-accent-deep transition-colors
                        disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Save
@@ -575,26 +581,67 @@ function DeleteConfirm({
   onCancel: () => void
 }) {
   return (
-    <div className="fixed inset-0 bg-ink bg-opacity-50 flex items-center justify-center z-50 px-4">
-      <div className="bg-paper border-2 border-ink shadow-[6px_6px_0_#1a1008] p-6 w-full max-w-sm space-y-4">
+    <div className="fixed inset-0 bg-ink/50 flex items-center justify-center z-50 px-4">
+      <div className="bg-surface border-2 border-ink shadow-hard p-6 w-full max-w-sm space-y-4">
         <p className="font-anton text-xl text-ink uppercase tracking-widest">Delete Session?</p>
-        <p className="font-grotesk text-sm text-ink opacity-70">
+        <p className="font-grotesk text-sm text-ink/70">
           This will permanently delete the session, video, and all coaching data. This cannot be undone.
         </p>
         <div className="flex gap-3 justify-end">
           <button
             onClick={onCancel}
-            className="font-elite text-xs uppercase tracking-widest border-2 border-ink px-4 py-2
-                       hover:bg-ink hover:text-paper transition-colors"
+            className="font-elite text-xs uppercase tracking-widest px-4 py-2
+                       border-2 border-ink text-ink hover:bg-ink hover:text-paper transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="font-elite text-xs uppercase tracking-widest border-2 border-ink px-4 py-2
-                       bg-accent-deep text-paper hover:bg-accent transition-colors"
+            style={{ transform: 'rotate(-2deg)' }}
+            className="font-elite text-xs uppercase tracking-widest px-4 py-2
+                       bg-accent text-paper border-2 border-ink shadow-hard
+                       hover:bg-accent-deep transition-colors"
           >
             Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Delete-all confirm ────────────────────────────────────────────────────────
+
+function DeleteAllConfirm({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="fixed inset-0 bg-ink/50 flex items-center justify-center z-50 px-4">
+      <div className="bg-surface border-2 border-ink shadow-hard p-6 w-full max-w-sm space-y-4">
+        <p className="font-anton text-xl text-ink uppercase tracking-widest">Delete All Sessions?</p>
+        <p className="font-grotesk text-sm text-ink/70">
+          This will permanently delete all sessions, videos, and coaching data. This cannot be undone.
+        </p>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            className="font-elite text-xs uppercase tracking-widest px-4 py-2
+                       border-2 border-ink text-ink hover:bg-ink hover:text-paper transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{ transform: 'rotate(-2deg)' }}
+            className="font-elite text-xs uppercase tracking-widest px-4 py-2
+                       bg-accent text-paper border-2 border-ink shadow-hard
+                       hover:bg-accent-deep transition-colors"
+          >
+            Delete all
           </button>
         </div>
       </div>
@@ -626,15 +673,25 @@ export default function AnalyzeClient() {
   const [sessionsLoading, setSessionsLoading] = useState(true)
   const [renameTarget, setRenameTarget]       = useState<{ id: string; title: string } | null>(null)
   const [deleteTarget, setDeleteTarget]       = useState<string | null>(null)
+  const [deleteAllTarget, setDeleteAllTarget] = useState(false)
 
-  // Fetch token + initial sessions on mount
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      const tok = data.session?.access_token ?? null
-      setToken(tok)
-      if (tok) fetchSessions(tok)
-      else setSessionsLoading(false)
-    })
+    // Recover a file picked before hydration finished: the native input
+    // already holds it, but no onChange ever reached React state.
+    const preSelected = fileInputRef.current?.files?.[0]
+    if (preSelected) setFile(preSelected)
+
+    if (LOCAL_MODE) {
+      setToken(LOCAL_TOKEN)
+      fetchSessions(LOCAL_TOKEN)
+    } else {
+      supabase.auth.getSession().then(({ data }) => {
+        const tok = data.session?.access_token ?? null
+        setToken(tok)
+        if (tok) fetchSessions(tok)
+        else setSessionsLoading(false)
+      })
+    }
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [])
 
@@ -673,13 +730,11 @@ export default function AnalyzeClient() {
           clearInterval(pollRef.current!)
           setReport(data.result?.report ?? null)
 
-          // Use signed URL if session was saved; fall back to local serving
           const vidUrl  = data.result?.video_url
           const vidPath = data.result?.video_path
           setVideoUrl(vidUrl ?? (vidPath ? `${BACKEND}${vidPath}?token=${authToken}` : null))
 
           setAppStage('done')
-          // Refresh diary so the new session appears
           fetchSessions(authToken)
         } else if (data.status === 'failed') {
           clearInterval(pollRef.current!)
@@ -784,6 +839,24 @@ export default function AnalyzeClient() {
     }
   }
 
+  async function handleDeleteAll() {
+    setDeleteAllTarget(false)
+    if (!token) return
+    try {
+      await Promise.all(
+        sessions.map((s) =>
+          fetch(`${BACKEND}/sessions/${s.id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ),
+      )
+      setSessions([])
+    } catch {
+      // Silently fail — user can retry
+    }
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-16">
@@ -802,6 +875,12 @@ export default function AnalyzeClient() {
           onCancel={() => setDeleteTarget(null)}
         />
       )}
+      {deleteAllTarget && (
+        <DeleteAllConfirm
+          onConfirm={handleDeleteAll}
+          onCancel={() => setDeleteAllTarget(false)}
+        />
+      )}
 
       {/* ── TOP: analysis section ── */}
       <section>
@@ -811,16 +890,16 @@ export default function AnalyzeClient() {
 
         {appStage === 'error' && (
           <div className="space-y-6">
-            <h1 className="font-anton text-5xl text-ink uppercase tracking-widest">Analyze</h1>
-            <div className="border-2 border-accent bg-paper p-5 shadow-[4px_4px_0_#1a1008]">
-              <p className="font-elite text-sm text-accent-deep uppercase tracking-widest mb-1">
+            <h1 className="font-anton text-3xl text-ink uppercase tracking-widest">Analyze</h1>
+            <div className="bg-surface border-2 border-ink p-5">
+              <p className="font-elite text-sm uppercase tracking-widest text-accent-deep mb-1">
                 Something went wrong
               </p>
               <p className="font-grotesk text-sm text-ink">{errorMsg}</p>
             </div>
             <button
               onClick={handleReset}
-              className="font-elite text-sm border-2 border-ink px-5 py-3 hover:bg-ink hover:text-paper active:bg-ink active:text-paper transition-colors"
+              className="font-elite text-sm text-muted hover:text-accent transition-colors"
             >
               ← Try again
             </button>
@@ -829,18 +908,18 @@ export default function AnalyzeClient() {
 
         {(appStage === 'idle' || appStage === 'uploading' || appStage === 'polling') && (
           <div className="max-w-2xl space-y-8">
-            <h1 className="font-anton text-5xl text-ink uppercase tracking-widest">Analyze</h1>
+            <h1 className="font-anton text-3xl text-ink uppercase tracking-widest">Analyze</h1>
 
             {errorMsg && (
-              <div className="border-2 border-accent bg-paper px-4 py-3">
-                <p className="font-grotesk text-sm text-accent-deep">{errorMsg}</p>
+              <div className="bg-surface border-2 border-ink p-4">
+                <p className="font-grotesk text-sm text-ink/80">{errorMsg}</p>
               </div>
             )}
 
             {(appStage === 'uploading' || appStage === 'polling') && (
-              <div className="border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_#1a1008]">
+              <div className="bg-surface border-2 border-ink p-6">
                 <ProgressBar stage={progress.stage} percent={progress.percent} />
-                <p className="font-elite text-xs text-ink opacity-50 mt-4 text-center">
+                <p className="font-elite text-xs text-muted mt-4 text-center">
                   {appStage === 'uploading'
                     ? 'Uploading your video…'
                     : 'Analyzing — this takes a minute for a full clip'}
@@ -850,10 +929,10 @@ export default function AnalyzeClient() {
 
             {appStage === 'idle' && (
               <div className="space-y-6">
-                <div className="border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_#1a1008]">
+                <div className="bg-surface border-2 border-ink p-6">
                   <label
                     htmlFor="video-input"
-                    className="block font-elite text-xs uppercase tracking-widest text-ink mb-3"
+                    className="block font-elite text-xs uppercase tracking-widest text-muted mb-3"
                   >
                     Upload video (.mp4 / .mov · max 200 MB · max 90 s)
                   </label>
@@ -864,25 +943,26 @@ export default function AnalyzeClient() {
                     accept="video/mp4,video/quicktime,video/*"
                     onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                     className="block w-full font-grotesk text-sm text-ink
-                               file:mr-4 file:py-2 file:px-4
-                               file:border-2 file:border-ink file:bg-paper
-                               file:font-elite file:text-xs file:uppercase file:tracking-widest
-                               file:cursor-pointer file:text-ink
-                               hover:file:bg-ink hover:file:text-paper
-                               active:file:bg-ink active:file:text-paper"
+                               file:mr-4 file:py-2.5 file:px-5
+                               file:border-2 file:border-ink
+                               file:bg-accent file:text-paper
+                               file:font-elite file:text-xs file:uppercase file:tracking-wider
+                               file:cursor-pointer
+                               hover:file:bg-accent-deep
+                               transition-colors"
                   />
                   {file && (
-                    <p className="font-elite text-xs text-ink opacity-60 mt-2">
+                    <p className="font-elite text-xs text-muted mt-2">
                       {file.name} · {(file.size / 1024 / 1024).toFixed(1)} MB
                     </p>
                   )}
                 </div>
 
-                <div className="border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_#1a1008]">
+                <div className="bg-surface border-2 border-ink p-5">
                   <p className="font-elite text-xs uppercase tracking-widest text-ink mb-1">
                     Moves in this video
                   </p>
-                  <p className="font-grotesk text-xs text-ink opacity-60 mb-4">
+                  <p className="font-grotesk text-xs text-muted mb-4">
                     Tap to select — leave empty for auto-detection of jumps &amp; turns.
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -893,11 +973,10 @@ export default function AnalyzeClient() {
                           key={move}
                           onClick={() => toggleMove(move)}
                           className={[
-                            'px-3 py-1.5 border-2 border-ink font-elite text-xs uppercase tracking-wide transition-colors',
-                            'active:bg-ink active:text-paper',
+                            'px-3 py-1.5 font-elite text-xs uppercase tracking-wide transition-colors',
                             active
-                              ? 'bg-accent text-paper border-accent-deep'
-                              : 'bg-paper text-ink hover:bg-ink hover:text-paper',
+                              ? 'bg-accent text-paper border-2 border-ink shadow-[2px_2px_0_#1B2330]'
+                              : 'bg-paper text-ink border-2 border-ink hover:bg-accent hover:text-paper',
                           ].join(' ')}
                         >
                           {move}
@@ -908,7 +987,7 @@ export default function AnalyzeClient() {
                   {selectedMoves.length > 0 && (
                     <button
                       onClick={() => setSelectedMoves([])}
-                      className="mt-3 font-elite text-xs text-ink opacity-50 underline"
+                      className="mt-3 font-elite text-xs text-muted underline"
                     >
                       Clear selection
                     </button>
@@ -919,22 +998,20 @@ export default function AnalyzeClient() {
                   onClick={handleAnalyze}
                   disabled={!file}
                   className={[
-                    'w-full py-4 font-anton text-lg uppercase tracking-widest border-2 border-ink',
-                    'shadow-[4px_4px_0_#1a1008] transition-colors',
-                    'active:shadow-none active:translate-x-1 active:translate-y-1',
+                    'w-full py-4 font-anton text-lg uppercase tracking-widest transition-colors border-2 border-ink',
                     file
-                      ? 'bg-accent text-paper hover:bg-accent-deep active:bg-accent-deep cursor-pointer'
-                      : 'bg-surface text-ink opacity-40 cursor-not-allowed',
+                      ? 'bg-accent text-paper hover:bg-accent-deep shadow-hard-lg cursor-pointer'
+                      : 'bg-ink/10 text-ink/40 cursor-not-allowed opacity-40',
                   ].join(' ')}
                 >
                   Analyze
                 </button>
 
-                <div className="border border-ink border-opacity-30 px-4 py-3">
-                  <p className="font-elite text-xs uppercase tracking-widest text-ink opacity-50 mb-2">
-                    Recording tips
+                <div className="bg-surface border-2 border-ink px-4 py-4">
+                  <p className="font-elite text-xs uppercase tracking-widest text-muted mb-2">
+                    Recording Tips
                   </p>
-                  <ul className="font-grotesk text-xs text-ink opacity-60 space-y-1 list-disc list-inside">
+                  <ul className="font-grotesk text-xs text-ink/70 space-y-1 list-disc list-inside">
                     <li>Whole body head-to-toe visible at all times</li>
                     <li>One dancer in frame, plain background</li>
                     <li>30+ FPS recommended for fast moves</li>
@@ -947,12 +1024,13 @@ export default function AnalyzeClient() {
         )}
       </section>
 
-      {/* ── BOTTOM: diary grid ── */}
+      {/* ── BOTTOM: sessions grid ── */}
       <DiaryGrid
         sessions={sessions}
         loading={sessionsLoading}
         onRename={(id, title) => setRenameTarget({ id, title })}
         onDelete={(id) => setDeleteTarget(id)}
+        onDeleteAll={() => setDeleteAllTarget(true)}
       />
     </div>
   )

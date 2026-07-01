@@ -12,6 +12,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPExcepti
 from supabase import Client
 
 from core.auth import get_current_user, _admin_client
+from core.config import settings
 from core.pipeline import run_pipeline
 
 router = APIRouter()
@@ -27,6 +28,13 @@ def _make_updater(job_id: str) -> callable:
     Creates a fresh admin client on each call so the background thread is
     not sharing connection state with the request thread.
     """
+    if settings.local_mode:
+        from core.local_store import update_job
+
+        def _update_local(jid: str, **kwargs) -> None:
+            update_job(jid, **kwargs)
+        return _update_local
+
     def _update(jid: str, **kwargs) -> None:
         try:
             _admin_client().table("jobs").update(kwargs).eq("id", jid).execute()
@@ -95,17 +103,21 @@ async def post_analyze(
 
     # ── Insert job row ───────────────────────────────────────────────────────
     job_id = str(uuid.uuid4())
-    try:
-        supabase.table("jobs").insert({
-            "id":      job_id,
-            "user_id": user["id"],
-            "status":  "queued",
-            "stage":   "Queued",
-            "percent": 0,
-        }).execute()
-    except Exception as exc:
-        video_path.unlink(missing_ok=True)
-        raise HTTPException(500, f"Failed to create job: {exc}")
+    if settings.local_mode:
+        from core.local_store import create_job
+        create_job(job_id, user["id"])
+    else:
+        try:
+            supabase.table("jobs").insert({
+                "id":      job_id,
+                "user_id": user["id"],
+                "status":  "queued",
+                "stage":   "Queued",
+                "percent": 0,
+            }).execute()
+        except Exception as exc:
+            video_path.unlink(missing_ok=True)
+            raise HTTPException(500, f"Failed to create job: {exc}")
 
     # ── Kick off pipeline as background task ─────────────────────────────────
     updater = _make_updater(job_id)

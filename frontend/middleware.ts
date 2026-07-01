@@ -1,9 +1,14 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { LOCAL_MODE } from '@/lib/local-mode'
 
 const PROTECTED = ['/analyze', '/diary', '/session']
 
 export async function middleware(request: NextRequest) {
+  if (LOCAL_MODE) {
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(

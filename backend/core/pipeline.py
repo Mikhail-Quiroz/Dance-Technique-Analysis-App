@@ -8,6 +8,7 @@ directory keyed by job_id.
 from __future__ import annotations
 
 import json
+import subprocess
 import threading
 import traceback
 from pathlib import Path
@@ -51,6 +52,134 @@ _SEQ_MAP: dict[str, tuple[str, str]] = {
 # Exported for the frontend chips (keep order matching app.py)
 SEQUENCE_OPTIONS: list[str] = list(_SEQ_MAP.keys())
 
+# Normalization targets for heavy uploads (phone footage is often 4K/60fps —
+# decoding that at full resolution dominates pipeline wall time, twice: once
+# for pose extraction and once for the render pass).
+_NORM_MAX_SIDE = 960   # matches pose.extractor.MAX_SIDE — no accuracy change
+_NORM_MAX_FPS  = 35.0  # cap to 30fps only above this, so ~30fps sources pass through
+
+
+def _normalize_video(src: Path, dst_dir: Path) -> tuple[Path, str]:
+    """Transcode heavy uploads once (≤960px long side, ≤30fps, H.264) so no
+    downstream stage ever decodes full-resolution frames.
+
+    Returns (video_to_process, pose_cache_key). The cache key is derived from
+    the ORIGINAL file's content hash so re-uploading the same video hits the
+    pose cache regardless of transcode byte differences. Falls back to the
+    original file when ffmpeg is missing, the video is already light, or the
+    transcode fails.
+    """
+    import cv2
+
+    from pose.extractor import _content_hash
+    from render.overlay import _FFMPEG_PATH
+
+    orig_hash = _content_hash(str(src))
+
+    cap = cv2.VideoCapture(str(src))
+    w   = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    h   = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    cap.release()
+
+    needs_scale = max(w, h) > _NORM_MAX_SIDE
+    needs_fps   = fps > _NORM_MAX_FPS
+    if _FFMPEG_PATH is None or not (needs_scale or needs_fps):
+        return src, orig_hash
+
+    vf = []
+    if needs_scale:
+        scale = _NORM_MAX_SIDE / max(w, h)
+        tw = int(round(w * scale / 2) * 2)   # libx264 requires even dimensions
+        th = int(round(h * scale / 2) * 2)
+        vf.append(f"scale={tw}:{th}")
+    if needs_fps:
+        vf.append("fps=30")
+
+    dst = dst_dir / "normalized.mp4"
+    cmd = [
+        _FFMPEG_PATH, "-y", "-i", str(src),
+        "-vf", ",".join(vf),
+        "-an",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+        str(dst),
+    ]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+    except Exception as exc:
+        print(f"[pipeline] video normalization failed, using original: {exc}")
+        return src, orig_hash
+
+    # Key includes the normalization signature so cached poses computed on a
+    # normalized timeline are never reused for a differently-processed file.
+    return dst, f"{orig_hash}_n{_NORM_MAX_SIDE}f30"
+
+
+def _save_session_local(
+    job_id: str,
+    user_id: str,
+    annotated_path: Path,
+    json_data: dict,
+    fps: float,
+    timestamps_ms,
+    update_job: Callable,
+) -> str | None:
+    """Local-mode equivalent of _save_to_supabase: no upload, just an index entry.
+
+    Reuses job_id as session_id and job_results/{job_id}/ as the artifact
+    location, since those files already exist on disk once the pipeline runs.
+    """
+    import datetime
+    from collections import Counter
+
+    from core.local_store import add_session
+    from library.storage import generate_thumbnail
+
+    try:
+        result_dir = JOB_RESULTS_DIR / job_id
+        session_id = job_id
+
+        # Thumbnail — apex frame of highest-scoring move from the annotated video
+        thumb_path = result_dir / "thumb.jpg"
+        moves = json_data.get("moves", [])
+        if moves:
+            best = max(moves, key=lambda m: m["overall_score"])
+            ts_parts = best["timestamp"].split(":")
+            apex_idx = int((int(ts_parts[0]) * 60 + int(ts_parts[1])) * fps)
+        else:
+            apex_idx = 0
+        generate_thumbnail(str(annotated_path), apex_idx, thumb_path, theme="blue")
+
+        n = len(_load_local_session_count(user_id)) + 1
+        today = datetime.date.today().strftime("%b %d, %Y")
+
+        duration_s = float(timestamps_ms[-1]) / 1000.0 if len(timestamps_ms) > 0 else 0.0
+        move_counts = dict(Counter(
+            m["move_type"].split("(")[0].strip() for m in moves
+        ))
+
+        add_session({
+            "id":            session_id,
+            "user_id":       user_id,
+            "title":         f"Session {n:03d} — {today}",
+            "created_at":    datetime.datetime.now().isoformat(),
+            "duration_s":    round(duration_s, 1),
+            "overall_score": json_data.get("overall_score"),
+            "move_counts":   move_counts,
+        })
+
+        update_job(job_id, session_id=session_id)
+        return session_id
+
+    except Exception as exc:
+        print(f"[pipeline] local session save failed ({job_id}): {exc}")
+        return None
+
+
+def _load_local_session_count(user_id: str) -> list:
+    from core.local_store import list_sessions
+    return list_sessions(user_id)
+
 
 def _save_to_supabase(
     job_id: str,
@@ -84,7 +213,7 @@ def _save_to_supabase(
             apex_idx = int((int(ts_parts[0]) * 60 + int(ts_parts[1])) * fps)
         else:
             apex_idx = 0
-        generate_thumbnail(str(annotated_path), apex_idx, thumb_path, theme="pink")
+        generate_thumbnail(str(annotated_path), apex_idx, thumb_path, theme="blue")
 
         # Upload annotated video
         vid_storage_path = f"{user_id}/{session_id}.mp4"
@@ -201,15 +330,20 @@ def run_pipeline(
         tilt_styles     = [s for k, s in seq_entries if k == "tilt"]
         compound_styles = [s for k, s in seq_entries if k == "compound_jump"]
 
-        # ── Stage 1: Pose extraction (0 → 60%) ──────────────────────────────
-        update_job(job_id, stage="Tracking pose", percent=1, status="running")
+        # ── Stage 1: Normalize + pose extraction (0 → 60%) ──────────────────
+        update_job(job_id, stage="Preparing video", percent=1, status="running")
+
+        work_video, pose_cache_key = _normalize_video(video_path, result_dir)
 
         extractor = PoseExtractor()
 
         def pose_progress(frac: float) -> None:
-            update_job(job_id, stage="Tracking pose", percent=int(1 + frac * 59))
+            update_job(job_id, stage="Tracking pose", percent=int(5 + frac * 55))
 
-        pose_data    = extractor.extract(str(video_path), progress_cb=pose_progress)
+        update_job(job_id, stage="Tracking pose", percent=5)
+        pose_data    = extractor.extract(
+            str(work_video), progress_cb=pose_progress, cache_key=pose_cache_key,
+        )
         fps          = pose_data["fps"]
         image_lm_raw = pose_data["image_lm"]
         world_lm_raw = pose_data["world_lm"]
@@ -356,7 +490,7 @@ def run_pipeline(
 
         try:
             render_annotated_video(
-                video_path=str(video_path),
+                video_path=str(work_video),
                 image_lm=image_lm,
                 move_reports=move_reports,
                 jumps=jumps,
@@ -375,9 +509,15 @@ def run_pipeline(
         # upload finishes and the sessions row is inserted.
         update_job(job_id, stage="Done", percent=100, status="done")
 
-        # ── Stage 5: Persist to Supabase (non-blocking) ─────────────────────
+        # ── Stage 5: Persist session (non-blocking) ─────────────────────────
+        try:
+            from core.config import settings
+            _local = settings.local_mode
+        except Exception:
+            _local = False
+        persist_fn = _save_session_local if _local else _save_to_supabase
         threading.Thread(
-            target=_save_to_supabase,
+            target=persist_fn,
             args=(job_id, user_id, annotated_path, json_data, fps, timestamps_ms, update_job),
             daemon=True,
         ).start()
@@ -395,8 +535,12 @@ def run_pipeline(
         )
 
     finally:
-        # Always remove the temp input file
+        # Always remove the temp input file and the normalized working copy
         try:
             video_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        try:
+            (result_dir / "normalized.mp4").unlink(missing_ok=True)
         except Exception:
             pass

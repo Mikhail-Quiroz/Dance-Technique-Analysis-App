@@ -20,6 +20,8 @@ ACCENT_PINK  = (232,  86, 143)
 PAPER_PINK   = (245, 230, 224)
 ACCENT_GREEN = ( 78, 140,  70)
 PAPER_GREEN  = (242, 239, 226)
+ACCENT_BLUE  = ( 95, 188, 196)  # #5FBCC4 light cyan-teal
+PAPER_BLUE   = (242, 247, 252)  # #F2F7FC
 
 def load_index() -> list[dict]:
     if not INDEX_FILE.exists():
@@ -66,8 +68,12 @@ def generate_thumbnail(
         if not ok:
             return False
 
-        accent = ACCENT_PINK  if theme == "pink"  else ACCENT_GREEN
-        paper  = PAPER_PINK   if theme == "pink"  else PAPER_GREEN
+        if theme == "blue":
+            accent, paper = ACCENT_BLUE, PAPER_BLUE
+        elif theme == "pink":
+            accent, paper = ACCENT_PINK, PAPER_PINK
+        else:
+            accent, paper = ACCENT_GREEN, PAPER_GREEN
 
         # Resize to thumbnail
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)

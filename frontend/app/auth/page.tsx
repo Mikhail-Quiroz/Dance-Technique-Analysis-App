@@ -57,25 +57,25 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-[calc(100vh-57px)] flex items-center justify-center bg-paper px-4 py-12">
-      <div className="w-full max-w-md ink-card bg-surface p-8 shadow-[4px_4px_0_#1a1008]">
+      <div className="w-full max-w-md ink-card bg-surface p-8">
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="font-anton text-4xl text-ink uppercase tracking-widest mb-1">
             Dance Platform
           </h1>
-          <p className="font-elite text-sm text-ink opacity-60">
+          <p className="font-elite text-sm text-muted">
             {mode === 'signin' ? 'Sign in to your account' : 'Create your account'}
           </p>
         </div>
 
         {/* Info / error banners */}
         {info && (
-          <div className="mb-4 border border-ink bg-paper px-4 py-2 font-elite text-sm text-ink">
+          <div className="mb-4 bg-paper border-2 border-ink px-4 py-2.5 font-elite text-sm text-ink">
             {info}
           </div>
         )}
         {error && (
-          <div className="mb-4 border border-accent bg-paper px-4 py-2 font-elite text-sm text-accent-deep">
+          <div className="mb-4 bg-paper border-2 border-ink px-4 py-2.5 font-elite text-sm text-accent-deep">
             {error}
           </div>
         )}
@@ -83,7 +83,7 @@ export default function AuthPage() {
         {/* Email/password form */}
         <form onSubmit={handleEmailAuth} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block font-elite text-xs text-ink mb-1 uppercase tracking-wider">
+            <label htmlFor="email" className="block font-elite text-xs text-muted mb-1.5 uppercase tracking-wider">
               Email
             </label>
             <input
@@ -92,13 +92,13 @@ export default function AuthPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border-2 border-ink bg-paper px-3 py-2 font-grotesk text-sm text-ink focus:border-accent focus:bg-white transition-colors"
+              className="w-full border-2 border-ink bg-paper px-3 py-2.5 font-grotesk text-sm text-ink focus:border-accent transition-colors"
               placeholder="your@email.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block font-elite text-xs text-ink mb-1 uppercase tracking-wider">
+            <label htmlFor="password" className="block font-elite text-xs text-muted mb-1.5 uppercase tracking-wider">
               Password
             </label>
             <input
@@ -108,7 +108,7 @@ export default function AuthPage() {
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border-2 border-ink bg-paper px-3 py-2 font-grotesk text-sm text-ink focus:border-accent focus:bg-white transition-colors"
+              className="w-full border-2 border-ink bg-paper px-3 py-2.5 font-grotesk text-sm text-ink focus:border-accent transition-colors"
               placeholder="••••••••"
             />
           </div>
@@ -116,7 +116,7 @@ export default function AuthPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-accent text-paper font-anton tracking-widest py-3 uppercase text-sm hover:bg-accent-deep transition-colors disabled:opacity-50"
+            className="w-full bg-accent text-paper font-anton tracking-widest py-3 uppercase text-sm border-2 border-ink shadow-hard hover:bg-accent-deep transition-colors disabled:opacity-50"
           >
             {loading ? '...' : mode === 'signin' ? 'Sign In' : 'Sign Up'}
           </button>
@@ -124,15 +124,15 @@ export default function AuthPage() {
 
         {/* Divider */}
         <div className="my-5 flex items-center gap-3">
-          <div className="flex-1 border-t border-ink opacity-30" />
-          <span className="font-elite text-xs text-ink opacity-50">or</span>
-          <div className="flex-1 border-t border-ink opacity-30" />
+          <div className="flex-1 border-t border-ink/15" />
+          <span className="font-elite text-xs text-muted">or</span>
+          <div className="flex-1 border-t border-ink/15" />
         </div>
 
         {/* Google OAuth */}
         <button
           onClick={handleGoogle}
-          className="w-full border-2 border-ink bg-paper text-ink font-elite text-sm py-3 uppercase tracking-wider hover:bg-ink hover:text-paper transition-colors flex items-center justify-center gap-2"
+          className="w-full border-2 border-ink bg-surface text-ink font-elite text-sm py-3 uppercase tracking-wider hover:bg-ink hover:text-paper transition-colors flex items-center justify-center gap-2"
         >
           <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
             <path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -145,7 +145,7 @@ export default function AuthPage() {
         </button>
 
         {/* Mode toggle */}
-        <p className="mt-5 text-center font-elite text-xs text-ink opacity-60">
+        <p className="mt-5 text-center font-elite text-xs text-muted">
           {mode === 'signin' ? (
             <>
               No account?{' '}

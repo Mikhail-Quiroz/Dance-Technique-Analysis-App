@@ -1,26 +1,27 @@
 @import "tailwindcss";
 
-/* Zine palette */
+/* Clean modern palette */
 @theme {
-  --color-paper: #f5e6e0;
-  --color-surface: #ede0d8;
-  --color-accent: #e8568f;
-  --color-accent-deep: #c4376e;
-  --color-ink: #1a1008;
-  --color-dark-section: #2a1a12;
+  --color-paper:        #F2F7FC;   /* page background — very light blue-white */
+  --color-surface:      #FFFFFF;   /* cards / panels — clean white */
+  --color-accent:       #047983;   /* teal — buttons, highlights */
+  --color-accent-deep:  #035d65;   /* darker teal — hover, emphasis */
+  --color-ink:          #1B2330;   /* primary text */
+  --color-muted:        #5B6B7C;   /* secondary / label text */
+  --color-dark-section: #123A63;   /* deep navy — placeholder areas */
 }
 
 /* Google Fonts wired through next/font/google CSS variables */
 @theme inline {
-  --font-anton: var(--font-nf-anton);
-  --font-elite: var(--font-nf-elite);
-  --font-grotesk: var(--font-nf-grotesk);
+  --font-anton:      var(--font-nf-anton);
+  --font-elite:      var(--font-nf-elite);
+  --font-grotesk:    var(--font-nf-grotesk);
   --font-yellowtail: var(--font-nf-yellowtail);
 }
 
 :root {
-  --background: #f5e6e0;
-  --foreground: #1a1008;
+  --background: #F2F7FC;
+  --foreground: #1B2330;
 }
 
 body {
@@ -29,13 +30,33 @@ body {
   font-family: var(--font-nf-grotesk, 'Space Grotesk', sans-serif);
 }
 
-/* Ink-border utility reused across the app */
-.ink-card {
-  border: 2px solid #1a1008;
-  border-radius: 2px;
+/* Bump content text sizes up one notch for readability */
+.text-xs   { font-size: 0.8125rem; }   /* 13px (was 12px) */
+.text-sm   { font-size: 0.9375rem; }   /* 15px (was 14px) */
+.text-base { font-size: 1.0625rem; }   /* 17px (was 16px) */
+
+/* Soft shadow utilities (cards / containers) */
+@utility shadow-soft {
+  box-shadow: 0 4px 14px rgba(27, 35, 48, 0.08);
+}
+@utility shadow-card {
+  box-shadow: 0 2px 8px rgba(27, 35, 48, 0.05);
 }
 
-/* Pink fill button (Tailwind class composition is in JSX, this is for base overrides) */
+/* Hard offset shadow utilities (buttons / video frame — zine style) */
+@utility shadow-hard {
+  box-shadow: 3px 3px 0 #1B2330;
+}
+@utility shadow-hard-lg {
+  box-shadow: 4px 4px 0 #1B2330;
+}
+
+/* Ink-card: square + ink border — auth page card */
+.ink-card {
+  border: 2px solid #1B2330;
+  box-shadow: 3px 3px 0 #1B2330;
+}
+
 input[type='text'],
 input[type='email'],
 input[type='password'] {

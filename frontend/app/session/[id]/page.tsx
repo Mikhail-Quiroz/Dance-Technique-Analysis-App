@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { LOCAL_MODE, LOCAL_TOKEN } from '@/lib/local-mode'
 import { CueCard, MoveAccordion, type Cue, type Move, type Report } from '@/app/analyze/AnalyzeClient'
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8000'
@@ -40,16 +41,20 @@ export default function SessionPage() {
   const [error, setError]           = useState<string | null>(null)
   const [token, setToken]           = useState<string | null>(null)
 
-  // Rename state
   const [editing, setEditing]       = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
   const [saving, setSaving]         = useState(false)
 
-  // Delete state
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting]           = useState(false)
 
   useEffect(() => {
+    if (LOCAL_MODE) {
+      setToken(LOCAL_TOKEN)
+      if (sessionId) fetchSession(LOCAL_TOKEN, sessionId)
+      else { setError('Not signed in'); setLoading(false) }
+      return
+    }
     supabase.auth.getSession().then(({ data }) => {
       const tok = data.session?.access_token ?? null
       setToken(tok)
@@ -119,8 +124,8 @@ export default function SessionPage() {
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 flex items-center gap-3">
-        <div className="w-5 h-5 border-2 border-ink border-t-transparent rounded-full animate-spin" />
-        <span className="font-elite text-xs text-ink opacity-50 uppercase tracking-widest">
+        <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        <span className="font-elite text-xs text-muted uppercase tracking-widest">
           Loading session…
         </span>
       </div>
@@ -130,15 +135,15 @@ export default function SessionPage() {
   if (error || !session) {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16 space-y-6">
-        <h1 className="font-anton text-4xl text-ink uppercase tracking-widest">Session</h1>
-        <div className="border-2 border-accent bg-paper p-5 shadow-[4px_4px_0_#1a1008]">
-          <p className="font-elite text-sm text-accent-deep uppercase tracking-widest mb-1">
+        <h1 className="font-anton text-3xl text-ink uppercase tracking-widest">Session</h1>
+        <div className="bg-surface border-2 border-ink p-5">
+          <p className="font-elite text-sm text-accent-deep uppercase tracking-widest">
             {error ?? 'Something went wrong'}
           </p>
         </div>
         <button
           onClick={() => router.push('/analyze')}
-          className="font-elite text-sm border-2 border-ink px-5 py-3 hover:bg-ink hover:text-paper transition-colors"
+          className="font-elite text-sm text-muted hover:text-accent transition-colors"
         >
           ← Back to Analyze
         </button>
@@ -165,26 +170,28 @@ export default function SessionPage() {
 
       {/* Delete confirm overlay */}
       {confirmDelete && (
-        <div className="fixed inset-0 bg-ink bg-opacity-50 flex items-center justify-center z-50 px-4">
-          <div className="bg-paper border-2 border-ink shadow-[6px_6px_0_#1a1008] p-6 w-full max-w-sm space-y-4">
+        <div className="fixed inset-0 bg-ink/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-surface border-2 border-ink shadow-hard p-6 w-full max-w-sm space-y-4">
             <p className="font-anton text-xl text-ink uppercase tracking-widest">Delete Session?</p>
-            <p className="font-grotesk text-sm text-ink opacity-70">
+            <p className="font-grotesk text-sm text-ink/70">
               This will permanently delete the session, video, and all coaching data. This cannot be undone.
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setConfirmDelete(false)}
                 disabled={deleting}
-                className="font-elite text-xs uppercase tracking-widest border-2 border-ink px-4 py-2
-                           hover:bg-ink hover:text-paper transition-colors disabled:opacity-40"
+                className="font-elite text-xs uppercase tracking-widest px-4 py-2
+                           border-2 border-ink text-ink hover:bg-ink hover:text-paper transition-colors disabled:opacity-40"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="font-elite text-xs uppercase tracking-widest border-2 border-ink px-4 py-2
-                           bg-accent-deep text-paper hover:bg-accent transition-colors disabled:opacity-40"
+                style={{ transform: 'rotate(-2deg)' }}
+                className="font-elite text-xs uppercase tracking-widest px-4 py-2
+                           bg-accent text-paper border-2 border-ink shadow-hard
+                           hover:bg-accent-deep transition-colors disabled:opacity-40"
               >
                 {deleting ? 'Deleting…' : 'Delete'}
               </button>
@@ -198,10 +205,10 @@ export default function SessionPage() {
         <div className="space-y-1 flex-1 min-w-0">
           <button
             onClick={() => router.push('/analyze')}
-            className="font-elite text-xs uppercase tracking-widest text-ink opacity-50
-                       hover:opacity-100 transition-opacity mb-2 block"
+            className="font-elite text-xs uppercase tracking-widest text-muted
+                       hover:text-accent transition-colors mb-2 block"
           >
-            ← My Diary
+            ← Sessions
           </button>
 
           {editing ? (
@@ -214,21 +221,22 @@ export default function SessionPage() {
                   if (e.key === 'Enter') handleRename()
                   if (e.key === 'Escape') { setEditing(false); setTitleDraft(session.title) }
                 }}
-                className="border-2 border-ink bg-surface px-3 py-1 font-anton text-2xl text-ink
-                           uppercase tracking-widest w-full max-w-md"
+                className="border-2 border-ink bg-paper px-3 py-1.5 font-anton text-2xl text-ink
+                           uppercase tracking-widest w-full max-w-md focus:border-accent transition-colors"
               />
               <button
                 onClick={handleRename}
                 disabled={saving || !titleDraft.trim()}
-                className="font-elite text-xs border-2 border-ink px-3 py-2 bg-accent text-paper
+                style={{ transform: 'rotate(-2deg)' }}
+                className="font-elite text-xs px-3 py-2 bg-accent text-paper border-2 border-ink shadow-hard
                            hover:bg-accent-deep transition-colors disabled:opacity-40 whitespace-nowrap"
               >
                 {saving ? '…' : 'Save'}
               </button>
               <button
                 onClick={() => { setEditing(false); setTitleDraft(session.title) }}
-                className="font-elite text-xs border-2 border-ink px-3 py-2 hover:bg-ink
-                           hover:text-paper transition-colors whitespace-nowrap"
+                className="font-elite text-xs px-3 py-2 border-2 border-ink text-ink
+                           hover:bg-ink hover:text-paper transition-colors whitespace-nowrap"
               >
                 Cancel
               </button>
@@ -246,7 +254,7 @@ export default function SessionPage() {
             </button>
           )}
 
-          <p className="font-elite text-xs text-ink opacity-50">
+          <p className="font-elite text-xs text-muted">
             {formatDate(session.created_at)}
             {session.duration_s != null && ` · ${Math.round(session.duration_s)}s`}
           </p>
@@ -254,8 +262,10 @@ export default function SessionPage() {
 
         <button
           onClick={() => setConfirmDelete(true)}
-          className="font-elite text-xs uppercase tracking-widest border-2 border-ink px-3 py-2
-                     text-accent-deep hover:bg-accent-deep hover:text-paper transition-colors
+          style={{ transform: 'rotate(-2deg)' }}
+          className="font-elite text-xs uppercase tracking-widest px-4 py-2
+                     bg-accent text-paper border-2 border-ink shadow-hard
+                     hover:bg-accent-deep transition-colors
                      whitespace-nowrap self-start mt-7"
         >
           Delete
@@ -267,24 +277,24 @@ export default function SessionPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { label: 'Score',          value: `${report.overall_score}/100` },
-            { label: 'Strongest Area', value: report.strongest_area },
-            { label: '#1 Focus',       value: report.focus_area },
+            { label: 'Strongest Area', value: report.strongest_area         },
+            { label: '#1 Focus',       value: report.focus_area             },
           ].map(({ label, value }) => (
-            <div
-              key={label}
-              className="border-2 border-ink bg-surface p-4 shadow-[3px_3px_0_#1a1008]"
-            >
-              <p className="font-elite text-xs uppercase tracking-widest text-ink opacity-60 mb-1">
+            <div key={label} className="bg-surface border-2 border-ink shadow-hard p-5">
+              <div
+                className="inline-block bg-accent text-paper font-elite text-xs uppercase tracking-wider px-3 py-1 mb-3"
+                style={{ transform: 'rotate(-2deg)' }}
+              >
                 {label}
-              </p>
-              <p className="font-grotesk text-sm text-ink font-medium">{value}</p>
+              </div>
+              <p className="font-grotesk text-xl text-ink font-semibold">{value}</p>
             </div>
           ))}
         </div>
       )}
 
       {report?.no_moves_detected && (
-        <div className="border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_#1a1008]">
+        <div className="bg-surface border-2 border-ink p-5">
           <p className="font-elite text-sm uppercase tracking-widest text-accent-deep mb-1">
             No Dance Detected
           </p>
@@ -297,37 +307,38 @@ export default function SessionPage() {
       {/* Video + coaching */}
       {report && !report.no_moves_detected && (
         <div className="flex flex-col md:flex-row gap-6">
-          {/* Video — polaroid frame */}
           <div className="md:w-2/5 flex-shrink-0">
             <div
-              className="border-4 border-ink bg-paper p-2 shadow-[6px_6px_0_#1a1008]"
-              style={{ transform: 'rotate(-1.2deg)' }}
+              className="bg-surface border-2 border-ink shadow-[4px_4px_0_#1B2330] p-2"
+              style={{ transform: 'rotate(-2deg)' }}
             >
               {session.video_url ? (
                 <video
                   src={session.video_url}
                   controls
                   playsInline
-                  className="w-full border border-ink"
+                  className="w-full"
                 />
               ) : (
-                <div className="w-full aspect-video bg-dark-section flex items-center justify-center border border-ink">
+                <div className="w-full aspect-video bg-dark-section flex items-center justify-center">
                   <span className="font-elite text-xs text-paper opacity-40">
                     video not available
                   </span>
                 </div>
               )}
-              <p className="font-elite text-xs text-center text-ink opacity-50 mt-2">
+              <p className="font-elite text-xs text-center text-muted mt-2">
                 annotated · {report.moves.length} move{report.moves.length !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
 
-          {/* Coaching cues */}
           <div className="flex-1 space-y-3">
-            <p className="font-elite text-xs uppercase tracking-widest text-ink opacity-60">
-              {topCues.length > 0 ? 'Top Corrections' : 'Great Technique Throughout!'}
-            </p>
+            <div
+              className="inline-block bg-accent text-paper font-elite text-xs uppercase tracking-wider px-3 py-1 mb-1 border-2 border-ink shadow-[2px_2px_0_#1B2330]"
+              style={{ transform: 'rotate(-2deg)' }}
+            >
+              {topCues.length > 0 ? 'Top Corrections' : 'Great Technique!'}
+            </div>
             {topCues.map((cue) => (
               <CueCard key={cue.cue_id} cue={cue} />
             ))}
@@ -338,7 +349,7 @@ export default function SessionPage() {
       {/* Per-move details */}
       {report && report.moves.length > 0 && (
         <div className="space-y-2">
-          <p className="font-elite text-xs uppercase tracking-widest text-ink opacity-60 mb-3">
+          <p className="font-elite text-xs uppercase tracking-widest text-muted mb-3">
             Move Metrics
           </p>
           {report.moves.map((move: Move, i: number) => (

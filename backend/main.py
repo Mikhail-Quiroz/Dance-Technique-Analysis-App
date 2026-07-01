@@ -14,9 +14,15 @@ from routers import health, analyze, jobs, sessions
 
 app = FastAPI(title="Dance Platform API", version="0.1.0")
 
+# Allow the configured origin plus its localhost/127.0.0.1 twin — the browser
+# sends whichever hostname the user typed, and they are distinct origins.
+_origins = {settings.frontend_origin}
+_origins.add(settings.frontend_origin.replace("localhost", "127.0.0.1"))
+_origins.add(settings.frontend_origin.replace("127.0.0.1", "localhost"))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin],
+    allow_origins=sorted(_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -3,6 +3,7 @@ import { Anton, Special_Elite, Space_Grotesk, Yellowtail } from 'next/font/googl
 import './globals.css'
 import Navbar from '@/components/layout/Navbar'
 import { createServerSupabase } from '@/lib/supabase-server'
+import { LOCAL_MODE } from '@/lib/local-mode'
 
 const anton = Anton({
   weight: '400',
@@ -32,10 +33,14 @@ export const metadata: Metadata = {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let userEmail: string | null | undefined = 'local@dev'
+  if (!LOCAL_MODE) {
+    const supabase = await createServerSupabase()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    userEmail = user?.email
+  }
 
   return (
     <html
@@ -43,7 +48,7 @@ export default async function RootLayout({
       className={`${anton.variable} ${specialElite.variable} ${spaceGrotesk.variable} ${yellowtail.variable} h-full`}
     >
       <body className="min-h-full flex flex-col bg-paper text-ink">
-        <Navbar email={user?.email} />
+        <Navbar email={userEmail} />
         <main className="flex-1">{children}</main>
       </body>
     </html>
