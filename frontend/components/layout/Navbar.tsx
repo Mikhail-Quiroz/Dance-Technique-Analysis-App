@@ -36,6 +36,12 @@ export default function Navbar({ email }: NavbarProps) {
           >
             Analyze
           </Link>
+          <Link
+            href="/live"
+            className="font-elite text-sm text-ink hover:text-accent transition-colors"
+          >
+            Live
+          </Link>
           <span className="font-elite text-xs text-muted hidden sm:block">
             {email}
           </span>

@@ -1,6 +1,6 @@
 # Dance Platform V2 — Roadmap
 
-## Slice Status
+## Phase 1 — Upload & analyze
 
 | Slice | Description | Status |
 |-------|-------------|--------|
@@ -9,6 +9,15 @@
 | 2 | Full upload path (FastAPI + background job + results UI) | ✅ Done |
 | 3 | Persistence + session gallery (/session/[id], rename, delete, RLS) | ✅ Done |
 | 4 | Polish (mobile, migration script) | 🔶 In progress |
+
+## Phase 2 — Real-time live coaching (/live)
+
+| Slice | Description | Status |
+|-------|-------------|--------|
+| 2a | /live page: camera + mirrored live skeleton overlay at real-time FPS | ✅ Done |
+| 2b | Live rep detection (turns + jumps or selected move) + on-screen cue + rep tally | ⬜ Not started |
+| 2c | Voice cues via SpeechSynthesis (cooldown rules, praise after clean reps, mute) | ⬜ Not started |
+| 2d | Future: save live sessions to the library (MediaRecorder); Claude-phrased cues | ⬜ Future |
 
 Setting the app up yourself? Jump to [Supabase setup](#supabase-setup-required-to-run-the-app).
 
@@ -119,6 +128,36 @@ Improvements made after the original slice plan:
 - [ ] Mobile responsiveness pass throughout
 - [ ] `scripts/migrate_library.py`: import legacy `library/` sessions idempotently
 - [ ] Final `python -m pytest tests/` pass before calling the slice done (currently 44/44 passing)
+
+---
+
+## Phase 2 — Live coaching details
+
+In-browser real-time coaching on a new `/live` route (same auth protection as `/analyze`). Pose tracking runs entirely client-side with `@mediapipe/tasks-vision`; the dance thresholds and cue text come from the same `/shared` JSON files the upload pipeline uses — never duplicated in TypeScript.
+
+### Slice 2a — camera + mirrored live skeleton ✅
+- [x] `/live` route (auth-protected) + "Live" navbar link
+- [x] Webcam via `getUserMedia`, PoseLandmarker (lite model) in VIDEO mode driven by `requestAnimationFrame` — synchronous `detectForVideo()` keeps the skeleton aligned with the frame on screen
+- [x] Selfie mirroring: video preview flipped like a studio mirror; landmark data stays anatomical (only the draw step mirrors) so left/right cues stay correct
+- [x] wasm runtime copied from the npm package + lite model auto-downloaded into `frontend/public/` on `npm run dev`/`build` (version-matched, no CDN at runtime)
+- [x] Graceful states: camera explainer, permission denied, no camera, "can't see you" hint; approximate-feedback disclaimer
+- [x] Dev-only FPS counter + console logging
+- [x] Verified in-browser: 29–30 fps sustained (≈9 ms/detection after warmup), skeleton aligned over a mirrored test feed, permission-denied and mobile (380 px) states checked
+
+### Slice 2b — live rep detection + cues (next)
+- [ ] Port minimal geometry to TS (`angleAt`, streaming smoothing, rolling baseline, body scale) with unit tests against known values (90°, 180°, collinear)
+- [ ] Import thresholds + cues from `/shared` JSON (single source of truth)
+- [ ] Streaming rep detection (jumps + turns, or the selected move); rep START/END events — never cue mid-move
+- [ ] Move selector chips (same pattern as `/analyze`), rep counter, current/last cue caption; top cue per rep via the existing `cue_priority` order
+
+### Slice 2c — voice
+- [ ] SpeechSynthesis: max one spoken cue per rep, no repeat within 8 s, praise after 3 clean reps, mute toggle; everything spoken also captioned
+
+### Slice 2d — future (not being built yet)
+- [ ] MediaRecorder capture that saves a live session to the library like an upload
+- [ ] Backend Claude-generated natural phrasing for cues
+
+> Note: `getUserMedia` requires a secure context — localhost is fine for dev; testing on a phone over LAN will need https (deferred to deployment).
 
 ---
 

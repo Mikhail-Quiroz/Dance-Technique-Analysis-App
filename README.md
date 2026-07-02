@@ -31,3 +31,9 @@ The app currently runs locally (a hosted version is coming by mid-August). It us
 3. Open http://localhost:3000
 
 Full Supabase setup steps (tables, storage buckets, Google OAuth) are in [ROADMAP.md](./ROADMAP.md).
+
+### Live coaching assets (/live)
+
+The live page runs MediaPipe pose tracking entirely in the browser. Its assets are served from `frontend/public/` rather than a CDN so the wasm build always matches the installed npm package version and dev works offline: `npm run dev`/`build` automatically copies the wasm runtime out of `node_modules/@mediapipe/tasks-vision` and downloads the `pose_landmarker_lite` model (~5.5 MB, one time) via `frontend/scripts/copy-mediapipe-wasm.mjs`. Both locations are gitignored.
+
+Note: the camera requires a secure context — `localhost` works for development, but opening the app from a phone over LAN needs https (planned for the hosted deployment).

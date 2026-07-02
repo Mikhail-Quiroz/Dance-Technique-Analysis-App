@@ -11,3 +11,4 @@ outputs/
 *.mov
 *.npz
 models/
+frontend/public/mediapipe/
