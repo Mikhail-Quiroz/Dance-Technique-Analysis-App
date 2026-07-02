@@ -8,7 +8,7 @@ The app uses MediaPipe to track the dancer's body, letting the computer measure 
 
 ## Screenshots
 <p align="center">
-  <img src="docs/screenshots.png" width="90%" alt="Left: analysis results with corrections. Right: upload page and saved sessions." />
+  <img src="docs/screenshots.png" width="90%" alt="App screenshots" />
 </p>
 
 ## Tech stack
