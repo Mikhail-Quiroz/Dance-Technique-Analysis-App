@@ -8,9 +8,9 @@ The app uses MediaPipe to track the dancer's body, letting the computer measure 
 
 ## Screenshots
 <p align="center">
-  <img src="docs/results.png" width="49%" alt="Analysis results with coaching feedback" />
-  <img src="docs/diary.png" width="49%" alt="Session library" />
+  <img src="docs/screenshots.png" width="90%" alt="Left: analysis results with corrections. Right: upload page and saved sessions." />
 </p>
+
 ## Tech stack
 - **Frontend:** Next.js, React, Tailwind CSS
 - **Backend:** Python, FastAPI
