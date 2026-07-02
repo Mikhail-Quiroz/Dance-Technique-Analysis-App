@@ -6,15 +6,17 @@
 |-------|-------------|--------|
 | 0 | Scaffold + shared JSON refactor | ✅ Done |
 | 1 | Auth end-to-end (Supabase + Next.js) | ✅ Done |
-| 2 | Full upload path (FastAPI + background job + results UI) | ⬜ Not started |
-| 3 | Persistence + diary (/diary, /session/[id], rename, delete, RLS) | ⬜ Not started |
-| 4 | Polish (mobile, error states, smoke test, migration script, README) | ⬜ Not started |
+| 2 | Full upload path (FastAPI + background job + results UI) | ✅ Done |
+| 3 | Persistence + session gallery (/session/[id], rename, delete, RLS) | ✅ Done |
+| 4 | Polish (mobile, migration script) | 🔶 In progress |
+
+Setting the app up yourself? Jump to [Supabase setup](#supabase-setup-required-to-run-the-app).
 
 ---
 
 ## Slice 0 — Scaffold + shared JSON refactor ✅
 
-**Gate:** `python -m pytest tests/` → 38 tests pass; `streamlit run legacy_streamlit/app.py` works.
+**Gate:** `python -m pytest tests/` passes; `streamlit run legacy_streamlit/app.py` works.
 
 ### What was done
 - Extracted all coaching cues into `shared/cues.json`
@@ -31,14 +33,14 @@ Dance Technique App/
 ├── shared/
 │   ├── cues.json          ← 25 coaching cues (cue/why/drill)
 │   └── thresholds.json    ← 33 scoring entries + metric→cue map + priority list
-├── backend/               ← FastAPI app (Slice 1+)
-├── frontend/              ← Next.js app (Slice 1+)
+├── backend/               ← FastAPI app
+├── frontend/              ← Next.js app
 ├── legacy_streamlit/
 │   └── app.py             ← original Streamlit app; run with:
 │                              streamlit run legacy_streamlit/app.py
-├── scripts/               ← migration script (Slice 4)
+├── scripts/               ← time_pipeline.py (per-stage timing), regenerate_thumbnails.py
 ├── tests/
-│   └── videos/            ← place test.mp4 here for smoke tests (Slice 4)
+│   └── videos/test.mp4    ← fixture for the end-to-end pipeline test
 └── [all existing packages: analysis/, pose/, knowledge/, render/, utils/, library/]
 ```
 
@@ -46,7 +48,7 @@ Dance Technique App/
 
 ## Slice 1 — Auth end-to-end ✅
 
-**Gate:** Sign in with Google → land on blank `/analyze` with user email in nav.
+**Gate:** Sign in with Google → land on `/analyze` with user email in nav.
 
 ### What was done
 - Scaffolded FastAPI in `backend/`: `main.py`, `core/config.py`, `core/auth.py`, `routers/health.py` (`GET /health`)
@@ -59,16 +61,78 @@ Dance Technique App/
 - `app/auth/callback/route.ts`: OAuth PKCE code exchange → session cookies → redirect `/analyze`
 - `middleware.ts`: protects `/analyze`, `/diary`, `/session/*`; uses `getUser()` (not `getSession()` — verified JWT)
 - `layout.tsx`: server-side `getUser()` → email passed to `<Navbar>`
-- `<Navbar>`: Analyze / Diary links + email display + Sign out
-- Placeholder `/analyze` shows signed-in email; placeholder `/diary` shows Yellowtail "Nothing here yet"
+- `<Navbar>`: Analyze link + email display + Sign out
 - `/` redirects → `/analyze` (signed in) or `/auth` (signed out)
 
-### Supabase setup required (user action)
-- [ ] Create Supabase project; run SQL for `sessions` + `jobs` tables + RLS policies (SQL in this file above)
+---
+
+## Slice 2 — Full upload path ✅
+
+**Gate:** Upload a dance video in browser → see progress stages → see coaching cards.
+
+### What was done
+- [x] `POST /analyze`: validates file (.mp4/.mov, ≤200 MB, ≤90 s), saves to tempfile, inserts job row, returns `{job_id}`, kicks off `BackgroundTask`
+- [x] `core/pipeline.py`: wraps the 4-stage analysis pipeline (pose → moves → metrics/feedback → render), updates the job row at each stage, deletes temp files in `finally`
+- [x] `GET /jobs/{id}`: job status, stage, percent, error, and (when done) the full report + video URL
+- [x] `GET /jobs/{id}/video`: streams the annotated video (Bearer header or `?token=` for `<video>` elements)
+- [x] `/analyze` frontend page: upload form + move-type selector chips + 2-second polling progress bar + results display (score cards, annotated video, coaching corrections, per-move metrics)
+
+---
+
+## Slice 3 — Persistence + session gallery ✅
+
+**Gate:** Full round-trip: upload → gallery shows new card → open session → rename → delete.
+
+### What was done
+- [x] Pipeline inserts a `sessions` row after successful analysis (runs in a background thread — see [post-plan fixes](#post-plan-fixes))
+- [x] Thumbnail generation: duotone/halftone still from the apex frame of the highest-scoring move
+- [x] `GET /sessions`: user's sessions newest-first, with signed thumbnail URLs
+- [x] `GET /sessions/{id}`: full report + 1-hour signed URLs for video + thumb
+- [x] `PATCH /sessions/{id}`: rename
+- [x] `DELETE /sessions/{id}`: deletes row + Storage objects (idempotent; clears the `jobs` FK first)
+- [x] Session gallery: responsive card grid with hover tilt, rename/delete/delete-all — lives on `/analyze` **below the current analysis**, not on a separate page. `/diary` simply redirects to `/analyze` (the nav needs only one destination).
+- [x] `/session/[id]` detail view: video player + full report + rename/delete controls
+- [x] `tests/test_sessions_auth_isolation.py`: user B cannot read/rename/delete user A's sessions
+- [ ] `scripts/migrate_library.py`: import existing `library/` sessions — **not built yet, tracked under Slice 4**
+
+---
+
+## Post-plan fixes
+
+Improvements made after the original slice plan:
+
+- **ffmpeg video encoding** (`render/overlay.py`): annotated videos are encoded via an ffmpeg subprocess (libx264, `-preset veryfast`) with an OpenCV `VideoWriter` fallback when ffmpeg isn't installed
+- **Non-blocking Supabase upload** (`core/pipeline.py`): the job is marked `done` as soon as results are ready; the Storage upload + `sessions` insert run in a background thread, so the results screen never waits on the upload
+- **Timing instrumentation** (`scripts/time_pipeline.py`): per-stage timing probe to find pipeline bottlenecks
+- **Upload normalization** (`core/pipeline.py`): oversized/high-fps uploads (e.g. 4K/60fps phone footage) are transcoded once to ≤960px / ≤30fps before analysis, and the pose cache is keyed by the original file's content hash — roughly 2.5× faster on phone videos, and re-analyzing the same video skips inference entirely
+- **Local dev mode**: a `LOCAL_MODE` env flag runs the whole app without a Supabase project (stub auth, on-disk session store) for offline development; flipping the flag back restores the cloud path
+
+---
+
+## Slice 4 — Polish 🔶
+
+**Gate:** All tests pass; README complete; app works on mobile viewport.
+
+- [x] `tests/videos/test.mp4` fixture + `tests/test_pipeline_end_to_end.py` (full POST-/analyze-equivalent pipeline run)
+- [x] Empty states (no sessions, no dance detected) + error states (failed job, upload validation, network retry during polling)
+- [x] Full `README.md`: prerequisites, Supabase setup link, env vars, run commands
+- [ ] Mobile responsiveness pass throughout
+- [ ] `scripts/migrate_library.py`: import legacy `library/` sessions idempotently
+- [ ] Final `python -m pytest tests/` pass before calling the slice done (currently 44/44 passing)
+
+---
+
+## Supabase setup (required to run the app)
+
+The README links here — these are the one-time steps to run the app against your own free Supabase project.
+
+- [ ] Create a Supabase project; run the SQL below ([Supabase SQL](#supabase-sql-run-in-sql-editor)) for the `sessions` + `jobs` tables + RLS policies
 - [ ] Create private Storage buckets: `videos`, `thumbs`
-- [ ] Enable Google OAuth in Supabase Auth dashboard → add `http://localhost:3000/auth/callback` as redirect URL
-- [ ] Copy `backend/.env.example` → `backend/.env` and fill SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-- [ ] Copy `frontend/.env.example` → `frontend/.env.local` and fill NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
+- [ ] Enable Google OAuth in Supabase Auth dashboard → add `http://localhost:3000/auth/callback` as a redirect URL
+- [ ] Copy `backend/.env.example` → `backend/.env` and fill `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+- [ ] Copy `frontend/.env.example` → `frontend/.env.local` and fill `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+> The service role key is backend-only — it must never appear in `frontend/` or be committed.
 
 ### Run commands
 ```bash
@@ -116,45 +180,3 @@ ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "own jobs" ON jobs FOR ALL
   USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 ```
-
----
-
-## Slice 2 — Full upload path
-
-**Gate:** Upload a dance video in browser → see progress stages → see coaching cards.
-
-### To do
-- [ ] `POST /analyze`: validate file (type, size ≤200 MB, duration ≤90 s), save to tempfile, insert job, return `{job_id}`, kick off `BackgroundTask`
-- [ ] `core/pipeline.py`: wraps the 4-stage analysis pipeline, updates job row each stage, uploads results to Storage, deletes temp file in `finally`
-- [ ] `GET /jobs/{id}`: reads job row from Supabase, returns `{stage, percent, status, session_id?, error?}`
-- [ ] `/analyze` frontend page: upload form + move selector + 2-s polling progress bar + results display
-
----
-
-## Slice 3 — Persistence + diary
-
-**Gate:** Full round-trip: upload → diary shows new card → open session → rename → delete.
-
-### To do
-- [ ] Pipeline worker inserts `sessions` row after successful analysis
-- [ ] `GET /sessions`: user's sessions newest-first
-- [ ] `GET /sessions/{id}`: full report + 1-hour signed URLs for video + thumb
-- [ ] `PATCH /sessions/{id}`: rename
-- [ ] `DELETE /sessions/{id}`: delete row + Storage objects
-- [ ] `/diary` page: responsive 3-col grid, `<SessionCard>` with hover tilt
-- [ ] `/session/[id]` detail view: player + full report + rename/delete controls
-- [ ] `tests/test_auth_isolation.py`: user B cannot read/modify user A's sessions
-- [ ] `scripts/migrate_library.py`: import existing `library/` sessions idempotently
-
----
-
-## Slice 4 — Polish
-
-**Gate:** All tests pass; README complete; app works on mobile viewport.
-
-### To do
-- [ ] Mobile responsiveness throughout
-- [ ] Empty states (no sessions, no dance detected) + error states (failed job, network loss)
-- [ ] Place `tests/videos/test.mp4` and write `tests/test_pipeline_end_to_end.py`
-- [ ] Full `README.md`: prerequisites, Supabase setup, env vars, run commands
-- [ ] Final `python -m pytest tests/` pass

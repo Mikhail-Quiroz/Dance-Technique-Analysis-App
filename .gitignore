@@ -5,3 +5,9 @@ node_modules/
 __pycache__/
 job_results/
 pose_cache/
+library/
+outputs/
+*.mp4
+*.mov
+*.npz
+models/

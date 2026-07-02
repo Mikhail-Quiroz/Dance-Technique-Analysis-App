@@ -1,15 +1,16 @@
 # Dance Technique Analysis Platform
 
 ## About this project
-This project analyzes dance videos and provides targeted feedback to dancers on how to improve their technique. As a dancer and teacher, I love to share my passion for dance. But at my dance studio, only certain kids can take private classes because they're so expensive. I wanted to create a tool that gives any kid the same one-on-one feedback that private classes provide, that's why build it.
+This project analyzes dance videos and provides targeted feedback to dancers on how to improve their technique. As a dancer and teacher, I love to share my passion for dance. But at my dance studio, only certain kids can take private classes because they're so expensive. I wanted to create a tool that allowed any kid to receive the same one-on-one feedback that private classes provide, inspiring me to build it.
 
 ## How it works
 The app uses MediaPipe to track the dancer's body, letting the computer measure the angles their joints form throughout the video. It detects technique moves (jumps, leaps, and turns), scores each one against technique-based thresholds, and returns matching coaching corrections including what to fix, why it matters, and a drill to practice it. These critiques, alongside a compliment highlighting the dancer's strongest area, are shown around the MediaPipe-annotated video.
 
 ## Screenshots
-![Analysis results with coaching feedback](docs/results.png)
-![Session library](docs/diary.png)
-
+<p align="center">
+  <img src="docs/results.png" width="49%" alt="Analysis results with coaching feedback" />
+  <img src="docs/diary.png" width="49%" alt="Session library" />
+</p>
 ## Tech stack
 - **Frontend:** Next.js, React, Tailwind CSS
 - **Backend:** Python, FastAPI
