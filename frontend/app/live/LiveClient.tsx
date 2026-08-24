@@ -3,8 +3,14 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PoseLandmarker } from '@mediapipe/tasks-vision'
 import { createPoseLandmarker, drawSkeleton } from '@/lib/live/pose'
+import { JumpRepDetector, type JumpRepEvent } from '@/lib/live/jumpDetector'
+import { selectTopCue, type TopCue } from '@/lib/live/scoring'
 
 const IS_DEV = process.env.NODE_ENV === 'development'
+// Most webcams settle around 30 fps at the resolution we request; the rep detector's
+// rolling windows are sized off this. Slice 2b-ii (turns) will look at measuring the
+// actual camera fps if this assumption turns out to matter in practice.
+const LIVE_FPS = 30
 
 type Stage = 'idle' | 'starting' | 'active' | 'error'
 type ErrorKind = 'denied' | 'nocamera' | 'insecure' | 'init'
@@ -33,6 +39,7 @@ export default function LiveClient() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const landmarkerRef = useRef<PoseLandmarker | null>(null)
+  const jumpDetectorRef = useRef<JumpRepDetector | null>(null)
   const rafRef = useRef<number>(0)
   const lastVideoTimeRef = useRef(-1)
   const lastPoseAtRef = useRef(0)
@@ -43,6 +50,8 @@ export default function LiveClient() {
   const [errorKind, setErrorKind] = useState<ErrorKind>('init')
   const [noDancer, setNoDancer] = useState(false)
   const [fps, setFps] = useState(0)
+  const [reps, setReps] = useState(0)
+  const [lastCue, setLastCue] = useState<{ repType: JumpRepEvent['type']; top: TopCue | null } | null>(null)
 
   useEffect(() => () => stopSession(), [])
 
@@ -52,9 +61,12 @@ export default function LiveClient() {
     streamRef.current = null
     landmarkerRef.current?.close()
     landmarkerRef.current = null
+    jumpDetectorRef.current = null
     lastVideoTimeRef.current = -1
     fpsSamplesRef.current = []
     setNoDancer(false)
+    setReps(0)
+    setLastCue(null)
     setStage('idle')
   }
 
@@ -78,6 +90,7 @@ export default function LiveClient() {
       ])
       streamRef.current = stream
       landmarkerRef.current = landmarker
+      jumpDetectorRef.current = new JumpRepDetector(LIVE_FPS)
 
       const video = videoRef.current!
       video.srcObject = stream
@@ -126,6 +139,14 @@ export default function LiveClient() {
         drawSkeleton(ctx, lm, canvas.width, canvas.height, true)
         lastPoseAtRef.current = now
         setNoDancer(false)
+
+        // Rep detection runs on the same anatomical (unmirrored) landmarks. A rep
+        // event only comes back once the move has fully finished — never mid-air.
+        const rep = jumpDetectorRef.current?.pushFrame(lm, t0)
+        if (rep) {
+          setReps((r) => r + 1)
+          setLastCue({ repType: rep.type, top: selectTopCue(rep.metrics) })
+        }
       } else if (now - lastPoseAtRef.current > 1000) {
         setNoDancer(true)
       }
@@ -159,9 +180,16 @@ export default function LiveClient() {
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="font-anton text-3xl text-ink uppercase tracking-widest">Live</h1>
-        {IS_DEV && stage === 'active' && (
-          <span className="font-elite text-xs text-muted">{fps} fps</span>
-        )}
+        <div className="flex items-center gap-3">
+          {stage === 'active' && (
+            <span className="font-elite text-xs uppercase tracking-widest text-ink">
+              Reps: {reps}
+            </span>
+          )}
+          {IS_DEV && stage === 'active' && (
+            <span className="font-elite text-xs text-muted">{fps} fps</span>
+          )}
+        </div>
       </div>
 
       {/* Idle: explainer + start */}
@@ -245,6 +273,22 @@ export default function LiveClient() {
             )}
           </div>
         </div>
+
+        {lastCue && (
+          <div className="bg-surface border-2 border-ink shadow-hard p-4 space-y-2">
+            <p className="font-elite text-xs uppercase tracking-widest text-accent-deep">
+              {lastCue.repType === 'leap (jeté-type)' ? 'Leap' : 'Jump'} landed
+            </p>
+            {lastCue.top ? (
+              <>
+                <p className="font-grotesk text-sm text-ink">{lastCue.top.cue}</p>
+                <p className="font-grotesk text-xs text-ink/60">{lastCue.top.why}</p>
+              </>
+            ) : (
+              <p className="font-grotesk text-sm text-ink">Clean rep — nice work!</p>
+            )}
+          </div>
+        )}
 
         <button
           onClick={stopSession}

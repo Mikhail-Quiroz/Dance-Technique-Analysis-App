@@ -15,7 +15,8 @@
 | Slice | Description | Status |
 |-------|-------------|--------|
 | 2a | /live page: camera + mirrored live skeleton overlay at real-time FPS | ✅ Done |
-| 2b | Live rep detection (turns + jumps or selected move) + on-screen cue + rep tally | ⬜ Not started |
+| 2b | Live jump/leap rep detection + on-screen cue + rep tally | 🔶 Built — pending live camera verification |
+| 2b-ii | Turn detection + move-selector chips (jumps vs. turns) | ⬜ Not started |
 | 2c | Voice cues via SpeechSynthesis (cooldown rules, praise after clean reps, mute) | ⬜ Not started |
 | 2d | Future: save live sessions to the library (MediaRecorder); Claude-phrased cues | ⬜ Future |
 
@@ -144,11 +145,39 @@ In-browser real-time coaching on a new `/live` route (same auth protection as `/
 - [x] Dev-only FPS counter + console logging
 - [x] Verified in-browser: 29–30 fps sustained (≈9 ms/detection after warmup), skeleton aligned over a mirrored test feed, permission-denied and mobile (380 px) states checked
 
-### Slice 2b — live rep detection + cues (next)
-- [ ] Port minimal geometry to TS (`angleAt`, streaming smoothing, rolling baseline, body scale) with unit tests against known values (90°, 180°, collinear)
-- [ ] Import thresholds + cues from `/shared` JSON (single source of truth)
-- [ ] Streaming rep detection (jumps + turns, or the selected move); rep START/END events — never cue mid-move
-- [ ] Move selector chips (same pattern as `/analyze`), rep counter, current/last cue caption; top cue per rep via the existing `cue_priority` order
+### Slice 2b — live jump/leap rep detection + cue + rep tally 🔶
+- [x] Ported minimal geometry to TS (`frontend/lib/live/geometry.ts`: `angleAt`, trailing
+      rolling baseline, streaming body scale, trailing-average smoothing) with unit tests
+      against the same known values `tests/test_geometry.py` checks (90°, 180°, collinear,
+      body scale ≈ 0.80)
+- [x] `/shared` JSON synced into the frontend at dev/build time (`scripts/copy-shared.mjs`,
+      same precedent as the wasm/model copy) — cue text and thresholds are never duplicated
+- [x] Streaming jump/leap detection (`frontend/lib/live/jumpDetector.ts`): airborne state
+      machine ported from `detect_jumps`, full metric set ported from `compute_jump_metrics`
+      (leg extension, pointed feet, split angle, torso uprightness, landing plié depth);
+      emits a rep event only once the move fully closes — never mid-air
+- [x] Cue selection (`frontend/lib/live/scoring.ts`): ported `score_metric` + the
+      dedupe/threshold/`cue_priority`-sort logic from `build_move_feedback`, returning the
+      single top cue per rep
+- [x] Wired into `/live`: rep counter + cue/why caption panel
+- [x] Automated verification: 22 new Vitest tests green (geometry parity with the Python
+      values, scoring parity, synthetic jump-detector sequences), `python -m pytest tests/`
+      still 44/44 (untouched), clean `tsc --noEmit`
+- [ ] **Not yet verified with a real camera** — no live jump has been observed in-browser yet.
+      Before trusting this slice, confirm on `/live`: a small jump/leap in frame increments
+      the rep counter once (not multiple times, not zero) and shows a plausible cue after
+      landing (not mid-air)
+- [ ] Turns (jumps-only this slice — `detect_turns`' shoulder-rotation signal + valley-split
+      logic is a second streaming state machine, deferred to 2b-ii below) and the
+      move-selector chip UI (not meaningful with only one option) also deferred to 2b-ii
+
+### Slice 2b-ii — turn detection + move-selector chips (next)
+- [ ] Port `detect_turns`'s shoulder-rotation signal to TS: shoulder vector → angle
+      (`arctan2`), median filter, unwrap, angular velocity, spinning mask, valley-splitting
+      to separate multiple pirouettes within one continuous spin
+- [ ] Port `compute_turn_metrics` scoring
+- [ ] Move selector chips (same pattern as `/analyze`'s `selectedMoves`/`toggleMove`) so the
+      dancer picks jumps vs. turns; rep tally + cue caption already built in 2b, reused as-is
 
 ### Slice 2c — voice
 - [ ] SpeechSynthesis: max one spoken cue per rep, no repeat within 8 s, praise after 3 clean reps, mute toggle; everything spoken also captioned
