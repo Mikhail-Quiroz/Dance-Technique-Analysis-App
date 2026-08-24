@@ -83,12 +83,18 @@ Storage buckets: `videos` (annotated mp4), `thumbs` (thumbnail jpg). Both privat
 
 ## Roadmap status
 
-| Slice | Description | Status |
-|-------|-------------|--------|
-| 0 | Shared JSON + monorepo scaffold | Done |
-| 1 | Auth (email + Google OAuth) | Done |
-| 2 | Upload + background job + results UI | Done |
-| 3 | Persistence + diary (/diary, /session/[id]) | Not started |
-| 4 | Polish, mobile, migration script | Not started |
+See `ROADMAP.md` for full detail. Summary:
 
-Slice 3 TODO: thumbnail generation (apex frame of highest-scoring move), Supabase Storage upload, `sessions` row insert in `pipeline.py`, `GET/PATCH/DELETE /sessions`, `/diary` grid, `/session/[id]` detail page, auth-isolation test.
+| Phase | Slice | Description | Status |
+|-------|-------|-------------|--------|
+| 1 — Upload & analyze | 0 | Shared JSON + monorepo scaffold | Done |
+| 1 | 1 | Auth (email + Google OAuth) | Done |
+| 1 | 2 | Upload + background job + results UI | Done |
+| 1 | 3 | Persistence + session gallery (/session/[id]) | Done |
+| 1 | 4 | Polish, mobile, migration script | In progress |
+| 2 — Real-time live coaching (/live) | 2a | Camera + mirrored live skeleton overlay | Done |
+| 2 | 2b | Live rep detection + on-screen cue + rep tally | Not started |
+| 2 | 2c | Voice cues via SpeechSynthesis | Not started |
+| 2 | 2d | Save live sessions to library (future) | Future |
+
+There is no "Learn mode" / Duolingo-style teaching phase — this is a dance analysis + corrections platform, not a teaching platform. After Phase 2, the plan is deployment + App Store packaging.

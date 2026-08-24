@@ -19,7 +19,7 @@ The app uses MediaPipe to track the dancer's body, letting the computer measure 
 - **Video encoding:** ffmpeg
 
 ## Status
-I have big goals for this project! I'm currently building live coaching using generative AI and text-to-speech. After that, I'll add a section where dancers can learn from scratch, so no previous experience is needed to use the app — similar to Duolingo, where users learn and then get tested. Finally, I'll wrap it as a mobile app for the App Store and get it hosted online.
+I have big goals for this project! I'm currently building real-time live webcam coaching — pose tracking, rep detection, and spoken corrections while you dance in front of your camera. After that, I'll wrap it as a mobile app for the App Store and get it hosted online.
 
 ## Setup
 The app currently runs locally (a hosted version is coming by mid-August). It uses a Next.js frontend, a FastAPI backend, and Supabase for auth and storage — running it yourself requires your own free Supabase project.
