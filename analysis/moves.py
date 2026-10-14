@@ -84,6 +84,173 @@ def _shoulder_signal(world_lm: np.ndarray, fps: float):
 # Jump / leap detection
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Floor contact + leap classification (shared by detect_jumps / detect_compound_jumps)
+#
+# Kept in step with frontend/lib/live/jumpDetector.ts -- same gates, same bars.
+# ---------------------------------------------------------------------------
+
+_FOOT_POINTS = {"L": (27, 29, 31), "R": (28, 30, 32)}   # ankle, heel, toe
+_VIS_T = 0.5
+
+FLOOR_CLEAR_RATIO      = 0.03   # lowest foot point must clear the floor by this x body_scale
+MIN_FLOOR_CLEAR_FRAMES = 2
+LEAP_MIN_SPLIT_DEG     = 35.0   # angle BETWEEN the legs (hip->ankle directions)
+LEAP_SEP_IMAGE         = 0.35   # |ankle dx| / body_scale
+LEAP_SEP_WORLD         = 0.60   # ankle distance in the horizontal plane / leg length
+LEAP_MIN_KNEE_DEG      = 140.0  # the STRAIGHTER knee (a tuck folds both)
+LEAP_LANDING_EXCLUDE   = 0.30   # closing the legs to land is correct, so not sampled
+
+
+def _lowest_foot_y(image_lm: np.ndarray) -> np.ndarray:
+    """Per-frame image y of the lowest visible point of EITHER foot (y grows downward).
+
+    NaN where either foot is unreadable: with one foot unseen there is no telling whether it
+    is the one still on the floor.
+    """
+    N = len(image_lm)
+    per_side = []
+    for ids in _FOOT_POINTS.values():
+        ys = np.where(image_lm[:, ids, 3] >= _VIS_T, image_lm[:, ids, 1], np.nan)
+        all_nan = np.all(np.isnan(ys), axis=1)
+        side = np.full(N, np.nan)
+        side[~all_nan] = np.nanmax(ys[~all_nan], axis=1)
+        per_side.append(side)
+    lowest = np.fmax(per_side[0], per_side[1])
+    lowest[np.isnan(per_side[0]) | np.isnan(per_side[1])] = np.nan
+    return lowest
+
+
+def _floor_rise(image_lm: np.ndarray, fps: float) -> np.ndarray:
+    """How far the lowest foot point sits above its own trailing floor baseline, per frame."""
+    lowest = _lowest_foot_y(image_lm)
+    filled = lowest.copy()
+    # The baseline only learns from readable frames; carry the last readable value through gaps.
+    last = np.nan
+    for t in range(len(filled)):
+        if np.isnan(filled[t]):
+            filled[t] = last
+        else:
+            last = filled[t]
+    if np.all(np.isnan(filled)):
+        return np.full(len(lowest), np.nan)
+    first = filled[~np.isnan(filled)][0]
+    filled = np.where(np.isnan(filled), first, filled)
+    baseline = compute_rolling_baseline(filled, fps=fps, window_sec=2.0)
+    return baseline - lowest
+
+
+def _feet_left_floor(floor_rise: np.ndarray, i: int, j: int, body_scale: float) -> bool:
+    """THE FLOOR GATE: did the lowest point of the feet actually leave the floor?
+
+    A hip rise alone cannot say. A releve raises the hips with the toes planted, and an
+    arabesque raises one ankle a long way -- an arabesque on releve passes every hip and
+    ankle test with the supporting foot flat on the floor, and its legs really are split,
+    so it used to read as a leap.  In every one of those the supporting toes stay down.
+    """
+    seg = floor_rise[i:j]
+    return int(np.sum(seg >= FLOOR_CLEAR_RATIO * body_scale)) >= MIN_FLOOR_CLEAR_FRAMES
+
+
+def _leg_vec(lm: np.ndarray, t: int, hip: int, ankle: int, use_z: bool) -> np.ndarray:
+    v = lm[t, ankle, :3] - lm[t, hip, :3]
+    if not use_z:
+        v = v.copy()
+        v[2] = 0.0
+    return v
+
+
+def _inter_leg_deg(lm: np.ndarray, t: int, use_z: bool) -> float:
+    a = _leg_vec(lm, t, 23, 27, use_z)
+    b = _leg_vec(lm, t, 24, 28, use_z)
+    na, nb = float(np.linalg.norm(a)), float(np.linalg.norm(b))
+    if na < 1e-9 or nb < 1e-9:
+        return 0.0
+    return float(np.degrees(np.arccos(np.clip(a @ b / (na * nb), -1.0, 1.0))))
+
+
+def _classify_leap(
+    image_lm: np.ndarray,
+    world_lm: Optional[np.ndarray],
+    floor_rise: np.ndarray,
+    i: int,
+    j: int,
+    body_scale: float,
+) -> tuple[bool, int]:
+    """Leap vs jump over the flight, not one apex frame. Returns (is_leap, widest_frame).
+
+    The old test was the 2-D angle at the hip midpoint between the ankles, on the single
+    hip-apex frame, against a 100 degree bar.  The hip apex is often not where the legs are
+    widest, one frame is one landmark blip from either answer, and 100 degrees there is a
+    big split -- real leaps routinely came out as jumps.  This mirrors the live detector:
+
+      - only frames with the feet genuinely off the floor, before the landing, may vote;
+      - the split must be WIDE (separation) and SHAPED like a split (angle between the legs,
+        which a tuck or a wide stance cannot fake) and have at least one straight leg;
+      - world and image landmarks each get a vote, because world depth is MediaPipe's weakest
+        axis and compresses a split filmed across the frame, while the image plane cannot see
+        a split aimed at the lens.
+    """
+    end = i + max(1, int(round((j - i) * (1.0 - LEAP_LANDING_EXCLUDE))))
+    frames = list(range(i, end))
+    rises = floor_rise[i:end]
+    peak = float(np.nanmax(rises)) if np.any(~np.isnan(rises)) else 0.0
+    floor = max(0.5 * peak, 0.04 * body_scale)
+    airborne = [t for t in frames if not np.isnan(floor_rise[t]) and floor_rise[t] >= floor]
+    if len(airborne) >= 2:
+        frames = airborne
+
+    def sep_score(t: int) -> float:
+        score = 0.0
+        if all(image_lm[t, k, 3] >= _VIS_T for k in (27, 28)):
+            score = abs(image_lm[t, 27, 0] - image_lm[t, 28, 0]) / body_scale / LEAP_SEP_IMAGE
+        if world_lm is not None:
+            w = world_lm[t]
+            leg = (np.linalg.norm(w[23, :3] - w[25, :3]) + np.linalg.norm(w[25, :3] - w[27, :3])
+                   + np.linalg.norm(w[24, :3] - w[26, :3]) + np.linalg.norm(w[26, :3] - w[28, :3])) / 2
+            if leg > 1e-6:
+                d = w[27, :3] - w[28, :3]
+                score = max(score, float(np.hypot(d[0], d[2])) / leg / LEAP_SEP_WORLD)
+        return score
+
+    def split_deg(t: int) -> float:
+        best = _inter_leg_deg(image_lm, t, use_z=False)
+        if world_lm is not None:
+            best = max(best, _inter_leg_deg(world_lm, t, use_z=True))
+        return best
+
+    def straightest_knee(t: int) -> float:
+        vals = []
+        for lm, use in ((world_lm, world_lm is not None), (image_lm, True)):
+            if not use:
+                continue
+            for h, k, a in ((23, 25, 27), (24, 26, 28)):
+                if lm is image_lm and not all(image_lm[t, x, 3] >= _VIS_T for x in (h, k, a)):
+                    continue
+                dims = slice(0, 3) if lm is world_lm else slice(0, 2)
+                ang = angle_at(lm[t, k, dims], lm[t, h, dims], lm[t, a, dims])
+                if not np.isnan(ang):
+                    vals.append(ang)
+        return max(vals) if vals else float("nan")
+
+    scores = [sep_score(t) for t in frames]
+    widest = frames[int(np.argmax(scores))]
+    knees = [k for k in (straightest_knee(t) for t in frames) if not np.isnan(k)]
+    is_leap = (
+        float(np.median(scores)) >= 1.0
+        and float(np.median([split_deg(t) for t in frames])) >= LEAP_MIN_SPLIT_DEG
+        and bool(knees) and float(np.median(knees)) >= LEAP_MIN_KNEE_DEG
+    )
+    return is_leap, widest
+
+
+def _hip_mid_split_angle(image_lm: np.ndarray, t: int) -> float:
+    """The reported (and scored) split_angle: 2-D angle at the hip midpoint between ankles."""
+    hip_mid_2d = (image_lm[t, 23, :2] + image_lm[t, 24, :2]) / 2.0
+    ang = angle_at(hip_mid_2d, image_lm[t, 27, :2], image_lm[t, 28, :2])
+    return 0.0 if np.isnan(ang) else ang
+
+
 def detect_jumps(
     image_lm: np.ndarray,
     fps: float,
@@ -94,7 +261,9 @@ def detect_jumps(
     """Detect jumps and leaps from smoothed image landmarks.
 
     If world_lm is provided, segments with concurrent shoulder rotation
-    (spinning_overlap_fraction > 0.20) are rejected as turns, not jumps.
+    (spinning_overlap_fraction > 0.20) are rejected as turns, not jumps.  A hip rise in which
+    the feet never leave the floor (a releve, an arabesque, a battement) is not a jump of any
+    kind and produces no event -- see _feet_left_floor.
     """
     N = len(image_lm)
     if timestamps_ms is None:
@@ -106,6 +275,7 @@ def detect_jumps(
 
     threshold = 0.06 * body_scale
     airborne  = (baseline - hip_mid_y) > threshold
+    floor_rise = _floor_rise(image_lm, fps)
 
     # Optional spinning mask to filter out turn-type segments
     spinning_mask: Optional[np.ndarray] = None
@@ -131,21 +301,17 @@ def detect_jumps(
                     i = j
                     continue
 
+            if not _feet_left_floor(floor_rise, i, j, body_scale):
+                i = j
+                continue
+
             rise      = baseline[i:j] - hip_mid_y[i:j]
             apex_rel  = int(np.argmax(rise))
             apex_frame = i + apex_rel
 
-            hip_mid_2d = np.array([
-                (image_lm[apex_frame, 23, 0] + image_lm[apex_frame, 24, 0]) / 2,
-                (image_lm[apex_frame, 23, 1] + image_lm[apex_frame, 24, 1]) / 2,
-            ])
-            l_ankle = image_lm[apex_frame, 27, :2]
-            r_ankle = image_lm[apex_frame, 28, :2]
-            split_angle = angle_at(hip_mid_2d, l_ankle, r_ankle)
-            if np.isnan(split_angle):
-                split_angle = 0.0
-
-            jump_type = "leap (jeté-type)" if split_angle > 100.0 else "jump (sauté-type)"
+            is_leap, widest = _classify_leap(image_lm, world_lm, floor_rise, i, j, body_scale)
+            split_angle = _hip_mid_split_angle(image_lm, widest)
+            jump_type = "leap (jeté-type)" if is_leap else "jump (sauté-type)"
 
             events.append(JumpEvent(
                 takeoff_frame=i,
@@ -290,8 +456,10 @@ def _turns_from_elevation(
 # ---------------------------------------------------------------------------
 
 def _make_turn(start, end, rotation_count, image_lm, timestamps_ms) -> TurnEvent:
-    l_ankle_y = image_lm[start, 27, 1]
-    r_ankle_y = image_lm[start, 28, 1]
+    # The foot that sits LOWER across the turn. The first frame alone is often still the
+    # preparation, with both feet down and either one marginally lower.
+    l_ankle_y = float(np.median(image_lm[start:end + 1, 27, 1]))
+    r_ankle_y = float(np.median(image_lm[start:end + 1, 28, 1]))
     if l_ankle_y >= r_ankle_y:
         supporting_leg, working_leg = "L", "R"
     else:
@@ -405,6 +573,11 @@ def _deduplicate(events: list[TurnEvent]) -> list[TurnEvent]:
     return kept
 
 
+def _pt3(lm: np.ndarray, frame: int, jid: int) -> np.ndarray:
+    """Return (x, y, z) world-coord point. Mirrors the helper of the same name in metrics.py."""
+    return lm[frame, jid, :3]
+
+
 def _merge_gaps(mask: np.ndarray, max_gap: int) -> np.ndarray:
     """Fill gaps of ≤ max_gap False values between True regions."""
     out = mask.copy()
@@ -431,6 +604,34 @@ def _merge_gaps(mask: np.ndarray, max_gap: int) -> np.ndarray:
 # Arabesque / single-leg-hold detection
 # ---------------------------------------------------------------------------
 
+def _arabesque_angle(
+    world_lm: np.ndarray, t: int, work_ankle_id: int, work_hip_id: int,
+) -> tuple[float, float]:
+    """(arabesque angle in degrees, supporting-ankle gap in torso lengths) at frame t.
+
+    Module level because detect_grand_battements needs it too. It used to be nested inside
+    detect_arabesques, so the battement L/R dedupe raised NameError whenever both sides
+    produced overlapping candidates.
+    """
+    shoulder_mid = (_pt3(world_lm, t, 11) + _pt3(world_lm, t, 12)) / 2.0
+    hip_l, hip_r = _pt3(world_lm, t, 23), _pt3(world_lm, t, 24)
+    hip_mid      = (hip_l + hip_r) / 2.0
+    torso        = float(np.linalg.norm(shoulder_mid - hip_mid))
+    if torso <= 1e-6:
+        return -180.0, 0.0
+    up_sign  = np.sign(shoulder_mid[1] - hip_mid[1]) or -1.0
+    down     = np.array([0.0, -up_sign, 0.0])
+    right    = np.array([hip_r[0] - hip_l[0], 0.0, hip_r[2] - hip_l[2]])
+    rn       = float(np.linalg.norm(right))
+    right    = right / rn if rn > 1e-9 else np.array([1.0, 0.0, 0.0])
+    backward = np.cross(down, right)   # right-handed body frame; see compute_arabesque_metrics
+    leg      = _pt3(world_lm, t, work_ankle_id) - _pt3(world_lm, t, work_hip_id)
+    deg      = float(np.degrees(np.arctan2(float(leg @ backward), float(leg @ down))))
+    supp_id  = 28 if work_ankle_id == 27 else 27
+    gap      = float((hip_mid[1] - world_lm[t, supp_id, 1]) * up_sign) / torso
+    return deg, gap
+
+
 def detect_arabesques(
     image_lm: np.ndarray,
     world_lm: np.ndarray,
@@ -438,29 +639,45 @@ def detect_arabesques(
     body_scale: float,
     timestamps_ms: Optional[np.ndarray] = None,
 ) -> list[ArabesqueEvent]:
-    """Detect arabesque holds: one leg elevated above the hip while the other stays grounded.
+    """Detect arabesque holds: the working leg raised behind the dancer, the other grounded.
 
-    Uses world-coordinate Y (positive = up) for elevation.  Both arabesque and
-    front/side développé produce this signal; the user's sequence specification is
-    the primary discriminator between those moves.
+    Gated on the ARABESQUE ANGLE -- degrees the working leg is raised behind, 0 standing and
+    90 horizontal -- the same quantity compute_arabesque_metrics scores as arabesque_height
+    and the same one the streaming port in frontend/lib/live/arabesqueDetector.ts uses.
+
+    This replaced "working ankle >= 8 cm above the hip midpoint", which had three problems.
+    It only admitted arabesques above roughly 95 degrees, so a textbook 90 degree arabesque
+    was never detected at all.  Being an absolute distance, it meant a different position on
+    a child than on an adult, and this app is for kids.  And it read world Y as positive-up
+    while MediaPipe documents Y positive-DOWN, with nothing in this repo verifying either --
+    under Y-down the supporting-ankle test can never pass, so the mask would be empty and
+    this function would never fire.  The angle below takes its axes from the BODY, so it is
+    agnostic about the Y convention and about where the camera is.
+
+    Front and side extensions score negative and near zero respectively, so a developpe is
+    not admitted as a low arabesque.
     """
     N = len(world_lm)
     if timestamps_ms is None:
         timestamps_ms = np.array([int(i * 1000 / fps) for i in range(N)], dtype=np.int64)
 
-    ELEV_THRESH = 0.08    # working ankle must be ≥ 8 cm above hip midpoint
-    SUPP_FLOOR  = -0.10   # supporting ankle must be ≤ this world-Y (clearly grounded)
+    MIN_ARABESQUE_DEG = 40.0   # keep in step with minArabesqueDeg in the streaming port
+    SUPP_GROUND_RATIO = 0.8    # supporting ankle this many torso lengths below the hips
     MIN_FRAMES  = max(4, int(0.25 * fps))
 
     candidates: list[ArabesqueEvent] = []
 
+    def _arabesque_deg(t: int, work_ankle_id: int, work_hip_id: int) -> tuple[float, float]:
+        return _arabesque_angle(world_lm, t, work_ankle_id, work_hip_id)
+
     for work_side, work_ankle_id, supp_ankle_id in [("L", 27, 28), ("R", 28, 27)]:
+        work_hip_id = 23 if work_side == "L" else 24
         mask = np.zeros(N, dtype=bool)
         for t in range(N):
-            hip_y = (world_lm[t, 23, 1] + world_lm[t, 24, 1]) / 2.0
-            if world_lm[t, work_ankle_id, 1] < hip_y + ELEV_THRESH:
+            deg, gap = _arabesque_deg(t, work_ankle_id, work_hip_id)
+            if deg < MIN_ARABESQUE_DEG:
                 continue
-            if world_lm[t, supp_ankle_id, 1] > SUPP_FLOOR:
+            if gap < SUPP_GROUND_RATIO:
                 continue   # supporting foot off the floor (jump) or poor tracking
             mask[t] = True
 
@@ -475,8 +692,10 @@ def detect_arabesques(
             while j < N and mask[j]:
                 j += 1
             if j - i >= MIN_FRAMES:
-                seg_y  = world_lm[i:j, work_ankle_id, 1]
-                peak   = i + int(np.argmax(seg_y))
+                # Peak = highest ARABESQUE ANGLE, not the largest raw world Y: raw Y is
+                # upside-down under the Y-down convention, so argmax picked the LOWEST frame.
+                segment = [_arabesque_deg(t, work_ankle_id, work_hip_id)[0] for t in range(i, j)]
+                peak    = i + int(np.argmax(segment))
                 candidates.append(ArabesqueEvent(
                     start_frame=i,
                     end_frame=j - 1,
@@ -497,9 +716,17 @@ def detect_arabesques(
             prev = deduped[-1]
             overlap = min(prev.end_frame, ev.end_frame) - max(prev.start_frame, ev.start_frame)
             if overlap >= 0:
-                prev_y = world_lm[prev.peak_frame, 27 if prev.working_leg == "L" else 28, 1]
-                ev_y   = world_lm[ev.peak_frame,   27 if ev.working_leg   == "L" else 28, 1]
-                if ev_y > prev_y:
+                prev_deg = _arabesque_deg(
+                    prev.peak_frame,
+                    27 if prev.working_leg == "L" else 28,
+                    23 if prev.working_leg == "L" else 24,
+                )[0]
+                ev_deg = _arabesque_deg(
+                    ev.peak_frame,
+                    27 if ev.working_leg == "L" else 28,
+                    23 if ev.working_leg == "L" else 24,
+                )[0]
+                if ev_deg > prev_deg:
                     deduped[-1] = ev
                 continue
         deduped.append(ev)
@@ -613,9 +840,17 @@ def detect_grand_battements(
             prev = deduped[-1]
             overlap = min(prev.end_frame, ev.end_frame) - max(prev.start_frame, ev.start_frame)
             if overlap >= 0:
-                prev_y = world_lm[prev.peak_frame, 27 if prev.working_leg == "L" else 28, 1]
-                ev_y   = world_lm[ev.peak_frame,   27 if ev.working_leg   == "L" else 28, 1]
-                if ev_y > prev_y:
+                prev_deg = _arabesque_angle(
+                    world_lm, prev.peak_frame,
+                    27 if prev.working_leg == "L" else 28,
+                    23 if prev.working_leg == "L" else 24,
+                )[0]
+                ev_deg = _arabesque_angle(
+                    world_lm, ev.peak_frame,
+                    27 if ev.working_leg == "L" else 28,
+                    23 if ev.working_leg == "L" else 24,
+                )[0]
+                if ev_deg > prev_deg:
                     deduped[-1] = ev
                 continue
         deduped.append(ev)
@@ -842,6 +1077,7 @@ def detect_compound_jumps(
     airborne  = (baseline - hip_mid_y) > threshold
 
     _, _, spinning_mask = _shoulder_signal(world_lm, fps)
+    floor_rise = _floor_rise(image_lm, fps)
 
     events: list[JumpEvent] = []
     i = 0
@@ -857,7 +1093,7 @@ def detect_compound_jumps(
         if duration >= 4:
             spin_frac = float(np.mean(spinning_mask[i:j]))
             # Accept compound jumps: moderate spinning fraction
-            if 0.20 <= spin_frac <= 0.80:
+            if 0.20 <= spin_frac <= 0.80 and _feet_left_floor(floor_rise, i, j, body_scale):
                 rise       = baseline[i:j] - hip_mid_y[i:j]
                 apex_rel   = int(np.argmax(rise))
                 apex_frame = i + apex_rel

@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation'
+import SessionsClient from './SessionsClient'
 
-export default function DiaryPage() {
-  redirect('/analyze')
+export default function SessionsPage() {
+  return <SessionsClient />
 }

@@ -61,7 +61,7 @@
   },
   "straighten_standing_leg": {
     "cue": "Fully straighten your standing leg — pull up through the quad so the knee locks.",
-    "why": "A bent standing leg drops your centre and makes the arabesque look unstable. A straight leg creates the clean vertical line the form requires.",
+    "why": "A bent standing leg drops your center and makes the position - an arabesque, a pirouette, a piqué - look unstable. A straight leg creates the clean vertical line the form requires.",
     "drill": "Single-leg relevé holds (flat foot): fully extend the knee before lifting onto demi-pointe, hold 3 s. 3 × 10 each side."
   },
   "hold_developpe": {
@@ -122,6 +122,276 @@
   "level_the_leap": {
     "cue": "Lift your back leg so the line is level or oversplit — don't let it drop toward the floor.",
     "why": "A dropped back leg collapses the line of the jump; the back leg should reach at least parallel to the floor for the leap to look balanced and powerful.",
-    "drill": "Arabesque press-backs and split holds focusing on lifting the back leg above hip height — practise slow grand battements back with a 2-second pause at the top."
+    "drill": "Arabesque press-backs and split holds focusing on lifting the back leg above hip height — practice slow grand battements back with a 2-second pause at the top."
+  },
+  "praise_leg_line": {
+    "cue": "That leg line was fully extended — exactly the shape you want.",
+    "why": "A completely straight knee at the top is the hardest part of the line to hold, and it reads instantly to an audience.",
+    "drill": "Keep it: film one set a week from the side so you notice the first rep where the knee starts to soften."
+  },
+  "praise_split": {
+    "cue": "Big, even split at the peak — that's the shape of the jump.",
+    "why": "A wide split at the apex is what separates a jeté from a jump; holding it through the top means the height is being used.",
+    "drill": "Keep it: alternate split holds on the floor with jumping sets so the flexibility stays available under speed."
+  },
+  "praise_feet": {
+    "cue": "Feet stayed pointed all the way through — lovely finish.",
+    "why": "Feet are the last thing to be trained and the first to be dropped when a dancer is tired; keeping them means the whole line is under control.",
+    "drill": "Keep it: theraband point-and-flex sets, 3 x 20, to hold the strength you already have."
+  },
+  "praise_carriage": {
+    "cue": "Upper body stayed lifted and square — strong carriage.",
+    "why": "Holding the torso upright under load is what keeps the movement looking effortless rather than braced.",
+    "drill": "Keep it: add a slow plank-to-arabesque series to keep the deep core supporting the line."
+  },
+  "praise_landing": {
+    "cue": "Beautiful landing — you melted straight through the plié.",
+    "why": "A deep, quiet landing absorbs force through the whole leg and is the single biggest protector of knees and ankles.",
+    "drill": "Keep it: finish each session with 10 quiet jumps, listening for silence on every landing."
+  },
+  "praise_level": {
+    "cue": "Back leg stayed lifted and level — the line held right through the top.",
+    "why": "The back leg is the first thing to drop in a leap; holding it level means the jump is being supported, not just thrown.",
+    "drill": "Keep it: slow grand battements back with a 2-second hold at the top, both sides."
+  },
+  "praise_arabesque_height": {
+    "cue": "Excellent height on that arabesque — the leg stayed well up.",
+    "why": "Height in arabesque comes from active hip extension rather than swinging; holding it high means the range is genuinely yours.",
+    "drill": "Keep it: barre arabesque lifts with a 5-second hold at maximum height, 10 each side."
+  },
+  "praise_standing_leg": {
+    "cue": "Standing leg stayed straight and steady — solid base.",
+    "why": "A locked, quiet standing leg is what makes the balance readable; any wobble there shows up everywhere else in the line.",
+    "drill": "Keep it: single-leg relevé holds, 30 s each side, eyes on one spot."
+  },
+  "praise_hold": {
+    "cue": "You held that position still and under control.",
+    "why": "Stillness in a balance is the clearest sign that the position is supported by strength rather than momentum.",
+    "drill": "Keep it: extend your holds by 2 s at a time rather than chasing a higher leg."
+  },
+  "praise_general": {
+    "cue": "Clean rep — nothing to correct on that one.",
+    "why": "Every measured part of the movement landed inside the target range, which is exactly what a well-executed rep looks like.",
+    "drill": "Keep it: repeat at the same quality before adding height, speed, or range."
+  },
+  "straight_jump_counted": {
+    "cue": "Straight jump — counted. There's no critique for a jump with the legs together.",
+    "why": "The live coach critiques moves with a defined shape to measure against: splits, straddles, attitudes, turns and held positions. A sauté with the legs together has no such shape, however high it goes.",
+    "drill": "For leap feedback, open the legs in the air: a split leap, switch leap, calypso or russian."
+  },
+  "connect_passe": {
+    "cue": "Connect your working toe to your supporting knee — and keep it glued there for the whole turn.",
+    "why": "A passé that floats away from the knee, or slides down the shin, moves your weight off the supporting leg on every rotation, so the turn wobbles or travels.",
+    "drill": "Relevé passé balances at the barre: 8 s holds pressing the toe into the knee, then add a quarter turn without letting it slide."
+  },
+  "quick_spot": {
+    "cue": "Spot faster — leave your eyes on your focus point as long as you can, then whip your head around ahead of your body.",
+    "why": "When the head turns along with the body you lose your reference point, get dizzy and lose momentum. A quick spot leads the rotation and keeps it on balance.",
+    "drill": "Spotting drills toward one fixed point: slow quarter-turns on flat where only the head snaps, then chaînés, then single pirouettes."
+  },
+  "vertical_axis": {
+    "cue": "You're turning at a slant — line up your head, shoulders, hips and supporting foot on one straight vertical line.",
+    "why": "Rotation is only stable around a vertical axis through the ball of the supporting foot. A slanted body makes the turn travel and fall out.",
+    "drill": "Relevé passé balances facing a mirror, checking the line from the top of your head through the supporting foot; then single pirouettes finishing in a held balance."
+  },
+  "level_hips": {
+    "cue": "Keep both hips level — don't hike the working hip as the leg comes up to passé.",
+    "why": "A lifted hip tips the pelvis and drags the axis off-center, and usually lets the standing side sink.",
+    "drill": "Passé lifts at the barre with hands on your hips, feeling both hip bones stay level as the foot rises to the knee."
+  },
+  "lower_arms_first": {
+    "cue": "Lower your arms into first — hands just below your shoulders, about sternum-to-navel height, sloping gently down.",
+    "why": "Arms at or above shoulder height lift the shoulders and raise your center of gravity, which makes the turn top-heavy.",
+    "drill": "Port de bras in a mirror: open to second and close to first, checking the gentle downward slope from shoulder to fingertips every time."
+  },
+  "lift_arms_first": {
+    "cue": "Lift your arms into a rounded first — fingertips no lower than your navel.",
+    "why": "Dropped arms give the turn nothing to hold onto. A supported first position frames the rotation and helps you keep it centered.",
+    "drill": "Hold first position for 30 s in a mirror, fingertips at navel height, then add relevé passé balances keeping the arms still."
+  },
+  "lift_elbows": {
+    "cue": "Lift your elbows — don't let them sag below your hands.",
+    "why": "Dropped elbows collapse the rounded first position, and the arms start flapping open as you turn.",
+    "drill": "First-position holds in a mirror: elbows lifted and gently rounded, fingertips almost touching, shoulders down."
+  },
+  "praise_spot": {
+    "cue": "Sharp spot — your head stayed on its focus point and snapped around.",
+    "why": "A fast spot is what keeps a pirouette oriented and on balance, and it is the habit that makes doubles possible.",
+    "drill": "Keep it: try the same spot in a double, snapping the head twice as fast."
+  },
+  "praise_passe": {
+    "cue": "Your passé stayed connected to the knee all the way round.",
+    "why": "A fixed, connected passé keeps your weight centered over the supporting leg through every rotation.",
+    "drill": "Keep it: hold the passé for a balance at the end of the turn before closing."
+  },
+  "praise_releve": {
+    "cue": "Strong, high relevé through the whole turn.",
+    "why": "A tall relevé stacks your weight over the ball of the foot and cuts friction with the floor.",
+    "drill": "Keep it: finish the next turn by holding the relevé for a count before lowering."
+  },
+  "praise_arms": {
+    "cue": "Lovely rounded first position — arms supported and steady through the turn.",
+    "why": "Quiet, supported arms keep the rotation centered instead of throwing it off-axis.",
+    "drill": "Keep it: use the same arms in a double pirouette."
+  },
+  "turn_not_pirouette": {
+    "cue": "Turn — type unsure. I couldn't see a passé, so I'm not giving a critique for this one.",
+    "why": "Pirouette feedback needs the working toe up at the supporting knee. Without it, this could be a chaîné, an à la seconde turn or a spin on two feet, and each has a different correct shape.",
+    "drill": "For pirouette feedback, bring your working toe up to your supporting knee as you turn."
+  },
+  "straighten_arabesque_leg": {
+    "cue": "Straighten your back knee all the way — reach the leg long from the hip through the toes.",
+    "why": "A bent knee in arabesque shortens the line and drops the foot, so the leg looks lower than it is. A fully stretched leg is what makes the shape read from the front.",
+    "drill": "Tendu derrière into a low arabesque at the barre: lift only as high as you can keep the knee fully straight, hold 3 s, 8 each side."
+  },
+  "arabesque_gaze": {
+    "cue": "Look out over your front hand — let your eyes follow the arm reaching forward.",
+    "why": "The head finishes the arabesque line: eyes past the front fingertips extend the reach forward and balance the leg reaching back.",
+    "drill": "In a mirror, hold first arabesque on flat and check that your nose points the same way as your front arm. Then repeat on relevé."
+  },
+  "calypso_straighten_front": {
+    "cue": "Kick your front leg out fully straight — knee locked, toes reaching forward.",
+    "why": "A calypso's line is a straight front leg against a curved attitude behind; a soft front knee blurs the contrast that makes the shape.",
+    "drill": "Grand battements to the front with a locked knee, 8 each side, then brush-through leaps thinking only about the front leg."
+  },
+  "calypso_open_attitude": {
+    "cue": "Open your back attitude more — aim for about a 90° bend at the knee.",
+    "why": "A tightly folded back leg reads as a tuck rather than an attitude; the attitude should curve out behind you.",
+    "drill": "Attitude derrière at the barre: knee at 90°, thigh lifted, hold 5 s, 6 each side."
+  },
+  "calypso_lift_knee": {
+    "cue": "Lift your back knee so it sits higher than your foot.",
+    "why": "In a true attitude the knee is the highest point of the back leg. A dropped knee turns the shape into a bent leg trailing behind.",
+    "drill": "Attitude lifts lying on your stomach: knee bent to 90°, lift from the thigh so the knee rises first, 10 each side."
+  },
+  "calypso_lift_attitude": {
+    "cue": "Lift the whole back attitude higher — drive the thigh up behind you.",
+    "why": "The attitude should sit up near hip height; a low back thigh makes the leap look like a run.",
+    "drill": "Attitude derrière lifts at the barre with a 2-second hold at the top, 8 each side."
+  },
+  "calypso_kick_front": {
+    "cue": "Brush your front leg higher as you take off.",
+    "why": "Height in the front leg comes from a fast, full brush out of the chaîné; it is what lifts the whole leap.",
+    "drill": "Grand battements devant from a plié, 8 each side, then chaîné-into-battement without the jump."
+  },
+  "calypso_arch": {
+    "cue": "Add a slight arch — lift your chest, then let your upper back and head curve toward your back leg.",
+    "why": "A gentle cambré back finishes the calypso, connecting your head to the attitude behind. Lift first, then arch, so it never collapses.",
+    "drill": "Standing cambré back with arms in high fifth, 8 slow reps, keeping the ribs lifted the whole time."
+  },
+  "praise_calypso": {
+    "cue": "Lovely calypso shape — straight front leg with the attitude lifted behind.",
+    "why": "The contrast between a straight front leg and a curved, lifted attitude is the whole picture of a calypso.",
+    "drill": "Keep it: try the same shape with a deeper cambré toward the back leg."
+  },
+  "leap_type_unsure": {
+    "cue": "Leap — type unsure. I couldn't tell which leap this was, so I'm not giving a critique for this one.",
+    "why": "Different leaps get different corrections, and a wrong guess would coach a move you didn't do. A leap with one leg high and one low, where I didn't see a switch, lands here.",
+    "drill": "For a switch arabesque, film from the side so the switch shows clearly."
+  },
+  "seconde_stay_in_place": {
+    "cue": "Stay on the spot — keep your supporting foot anchored instead of traveling.",
+    "why": "If the supporting foot drifts, every turn starts from a new place and the series wanders off balance. The rotation should happen around one fixed point.",
+    "drill": "Mark a spot on the floor under your supporting foot and do two à la seconde turns; check the foot is still on the mark before adding more."
+  },
+  "chaine_feet_together": {
+    "cue": "Bring your feet together on every half-turn — don't let them drift apart.",
+    "why": "Chaînés stay fast and controlled when the feet close on each second step; feet that drift apart slow the turns and break the chain.",
+    "drill": "Slow chaînés on a line, pausing for a count with the feet together on each closing step, then speed up without losing the close."
+  },
+  "praise_chaine_arms": {
+    "cue": "Arms opened and closed without swinging past second - the turns stayed compact.",
+    "why": "Opening and closing in front of the shoulders keeps the arms connected to the turn instead of pulling you off your axis.",
+    "drill": "Keep it: try the same arms on a faster set of chaînés."
+  },
+  "chaine_dont_overopen": {
+    "cue": "Don't open your arms past second - keep your hands where you can still see them.",
+    "why": "The arms can open and close through the turns, but swung back behind the shoulders they pull you off your axis and slow the chain. Opening only as far as second keeps the turn compact.",
+    "drill": "Slow chaînés facing a mirror: open to second and check your hands stay just in front of your shoulders, then close, on every turn."
+  },
+  "russian_lift_legs": {
+    "cue": "Kick both legs up to hip height — level with the floor.",
+    "why": "The straddle reads as a russian when the legs come up toward horizontal; legs that stay low look like a jumping jack.",
+    "drill": "Standing side kicks to hip height, 10 each leg, then straddle jumps from a deep plié, kicking both legs at once."
+  },
+  "russian_wider": {
+    "cue": "Open your legs wider at the top — reach for a full straddle.",
+    "why": "The width of the straddle is the shape of the jump; every degree of opening makes the russian bigger.",
+    "drill": "Pancake and middle-split stretches, 30 s holds, then russians thinking only of reaching the toes away from each other."
+  },
+  "russian_even_legs": {
+    "cue": "Lift both legs to the same height.",
+    "why": "An uneven straddle tips the hips and pulls the jump to one side; both legs should reach up together.",
+    "drill": "Russians in front of a mirror, checking both feet arrive at the same height at the top of the jump."
+  },
+  "tilt_kick_higher": {
+    "cue": "Kick your tilt leg higher, so the foot reaches up past your head.",
+    "why": "A tilt is a nearly vertical line from foot to foot. When the top leg stops near hip height, it reads as a side kick instead.",
+    "drill": "Side extensions at the barre: kick to your highest point and hold 2 s, 8 each side, then tilt jumps thinking only about the top foot."
+  },
+  "praise_tilt": {
+    "cue": "Big tilt. The leg went right up past your head.",
+    "why": "A high leg with the body leaning away from it is the whole picture of a tilt.",
+    "drill": "Keep it: try the same height out of a switch."
+  },
+  "arabesque_leap_higher": {
+    "cue": "Lift your back leg higher in the air, to at least hip height behind you.",
+    "why": "The arabesque in the air needs the back leg up. A low back leg makes the jump look like a run.",
+    "drill": "Arabesque lifts at the barre with a 2-second hold, 8 each side, then small switch arabesques thinking only about the back leg."
+  },
+  "kick_straight_knee": {
+    "cue": "Straighten your kicking leg all the way, knee locked from hip to toe.",
+    "why": "A bent knee shortens the kick and makes it look lower than it is. The height should come from a straight leg brushing up.",
+    "drill": "Battements at the barre, slow on the way up: 8 each side, checking the knee stays locked the whole time."
+  },
+  "praise_kick": {
+    "cue": "Great height on that kick.",
+    "why": "A fast brush and a straight leg is where kick height comes from, and it showed.",
+    "drill": "Keep it: try the same height on the other leg."
+  },
+  "kick_arms_still": {
+    "cue": "Keep your arms still in second while you kick, so they don't lift and drop.",
+    "why": "Steady arms frame the kick and keep your balance. Arms that bounce pull the eye away from the leg.",
+    "drill": "Battements in front of a mirror with the arms in second, watching that the hands stay at the same height."
+  },
+  "praise_kick_arms": {
+    "cue": "Your arms held their line the whole kick.",
+    "why": "Still arms in second keep the kick clean and your balance steady.",
+    "drill": "Keep it: hold the same arms through a series of kicks."
+  },
+  "illusion_leg_higher": {
+    "cue": "Throw the free leg all the way up, so your legs make one straight vertical line.",
+    "why": "An illusion is a standing split that turns. When the free leg stops short of vertical, the shape reads as a tilted kick.",
+    "drill": "Standing split stretches against a wall, 30 s each side, then slow illusions thinking only about the top foot."
+  },
+  "praise_illusion": {
+    "cue": "Full split at the top of that illusion.",
+    "why": "Getting the free leg right up over the top is the hardest part of an illusion, and it makes the shape.",
+    "drill": "Keep it: try two in a row with the same height."
+  },
+  "tilt_straight_knee": {
+    "cue": "Lock the knee of your tilt leg, one straight line from hip to toe.",
+    "why": "A tilt is a long straight line through both legs. A soft knee on the top leg breaks the line and makes the tilt look lower than it is.",
+    "drill": "Tilt kicks at the barre: 8 each side, slow on the way up, knee locked the whole time."
+  },
+  "arabesque_leap_straight_back": {
+    "cue": "Lock your back knee in the air, straight from hip to toe.",
+    "why": "A switch arabesque finishes in an arabesque line. A bent back knee turns it into an attitude and shortens the whole shape.",
+    "drill": "Arabesque holds at the barre with the knee pulled straight, then small switch arabesques focusing only on the back knee."
+  },
+  "floater_straight_leg": {
+    "cue": "Keep your standing leg locked straight through your floaters, no plié between turns.",
+    "why": "A floater stays up the whole time. Bending the standing knee between turns turns it back into a regular second turn and loses the floating look.",
+    "drill": "Slow floaters with the arms up: 2 in a row, checking the standing knee never softens."
+  },
+  "fan_full_circle": {
+    "cue": "Finish the circle: sweep the leg down the far side at full reach instead of dropping it.",
+    "why": "A fan kick draws one big circle. When the leg goes up round and then drops straight down, the second half of the circle goes flat.",
+    "drill": "Slow fans facing a mirror: trace the whole circle at the same distance from you, 4 each leg, slow on the way down."
+  },
+  "praise_fan_circle": {
+    "cue": "That fan kick drew a full, round circle.",
+    "why": "Keeping the leg out at full reach all the way round, down the far side too, is what makes a fan kick look effortless.",
+    "drill": "Keep it: try the same circle on your other leg."
   }
 }

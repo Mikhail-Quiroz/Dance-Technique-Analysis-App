@@ -1,64 +1,218 @@
 @import "tailwindcss";
 
-/* Clean modern palette */
+/*
+ * Rose & teal (chosen 2026-10-07 from the user's reference app): a soft rose page, cream cards,
+ * a rose header on Home, a full teal Sessions page, a cream Results page, gold for the main
+ * action and the playful blocks, dark pills for the second action. Every text colour is checked
+ * against what it sits on (WCAG: 4.5:1 text, 3:1 big headings), e.g. muted 5.1:1 on the page,
+ * ink 5.2:1 on rose, cream 4.7:1 on teal. Legacy token names (sun, cocoa, olive, lilac, grape)
+ * keep their roles: main action, dark feature card, balances/praise, turns/accent.
+ */
 @theme {
-  --color-paper:        #F2F7FC;   /* page background — very light blue-white */
-  --color-surface:      #FFFFFF;   /* cards / panels — clean white */
-  --color-accent:       #047983;   /* teal — buttons, highlights */
-  --color-accent-deep:  #035d65;   /* darker teal — hover, emphasis */
-  --color-ink:          #1B2330;   /* primary text */
-  --color-muted:        #5B6B7C;   /* secondary / label text */
-  --color-dark-section: #123A63;   /* deep navy — placeholder areas */
+  --color-paper:       #F8E3EB;   /* page background */
+  --color-surface:     #FFFDF4;   /* cards */
+  --color-cream:       #F8F3DE;   /* the Results page, sheets */
+  --color-sunken:      #F3EADF;   /* tracks, insets, quiet buttons */
+  --color-line:        #EBDCDF;   /* hairlines */
+  --color-ink:         #2A2224;   /* primary text */
+  --color-muted:       #6E5C63;   /* secondary text */
+
+  --color-rose:        #E76E84;   /* Home's header, playful blocks */
+  --color-rose-deep:   #A6354F;   /* rose text and accents */
+  --color-rose-soft:   #FAD5DE;
+  --color-teal:        #367E73;   /* the Sessions page */
+  --color-teal-light:  #4C998C;   /* blocks on teal */
+  --color-teal-deep:   #2B6B60;
+  --color-teal-soft:   #D8ECE5;
+  --color-gold:        #F5B13D;
+  --color-gold-soft:   #FCE4B4;
+  --color-sage:        #ECEFD3;   /* stat tiles */
+
+  --color-sun:         #F5B13D;   /* main action (gold) */
+  --color-sun-deep:    #E9A021;   /* hover */
+  --color-sun-soft:    #FCE4B4;
+  --color-cocoa:       #2B6B60;   /* dark feature card (deep teal) */
+  --color-cocoa-deep:  #22574E;
+  --color-olive:       #3E8E80;   /* balances, praise */
+  --color-olive-deep:  #1F6255;
+  --color-olive-soft:  #D8ECE5;
+  --color-taupe:       #7D6B70;
+  --color-sand:        #EADFD0;
+  --color-blush:       #FCDAD3;
+  --color-berry:       #A3303C;
+  --color-lilac:       #FAD5DE;   /* turns' tint */
+  --color-grape:       #A6354F;   /* turns, headline accents */
+
+  /* Chart marks by move family (hold = balances & kicks). Validated as a categorical set (dataviz
+     validate_palette.js on the card colour: CVD dE 12.4, tritan 22.5, normal-vision dE 26.3). Gold is
+     2.5:1 on cards, so every chart that uses it also has visible labels. */
+  --color-chart-leap:  #E3901F;
+  --color-chart-turn:  #A6354F;
+  --color-chart-hold:  #2E9E86;
+
+  --radius-card: 1.75rem;
+
+  --animate-blink: blink 5s infinite;
+  --animate-bob: bob 3s ease-in-out infinite;
+  /* Shown, then gone: the phone's cue on the Live video. */
+  --animate-flash: flash 6s ease-in forwards;
+  /* Home's hello, once. */
+  --animate-wave: wave 1.6s ease-in-out 0.4s 1;
+
+  @keyframes blink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.1); }
+  }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+  @keyframes wave {
+    0%, 60%, 100% { transform: rotate(0deg); }
+    10%, 30% { transform: rotate(16deg); }
+    20% { transform: rotate(-8deg); }
+    40% { transform: rotate(-4deg); }
+    50% { transform: rotate(10deg); }
+  }
+  @keyframes flash {
+    0% { opacity: 0; transform: translateY(-6px); }
+    5%, 85% { opacity: 1; transform: none; }
+    100% { opacity: 0; visibility: hidden; }
+  }
 }
 
-/* Google Fonts wired through next/font/google CSS variables */
+/* Fonts from next/font/google (app/layout.tsx) */
 @theme inline {
-  --font-anton:      var(--font-nf-anton);
-  --font-elite:      var(--font-nf-elite);
-  --font-grotesk:    var(--font-nf-grotesk);
-  --font-yellowtail: var(--font-nf-yellowtail);
-}
-
-:root {
-  --background: #F2F7FC;
-  --foreground: #1B2330;
+  --font-sans:    var(--font-nf-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-nf-display), var(--font-nf-sans), ui-sans-serif, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-nf-grotesk, 'Space Grotesk', sans-serif);
+  /* The screen's colour (see "Screens" below): rose on Home, teal on Sessions, cream on results. */
+  background: var(--screen, var(--color-paper));
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  /* Phones in landscape: keep clear of the notch (the viewport runs under it, app/layout.tsx). */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
-/* Bump content text sizes up one notch for readability */
-.text-xs   { font-size: 0.8125rem; }   /* 13px (was 12px) */
-.text-sm   { font-size: 0.9375rem; }   /* 15px (was 14px) */
-.text-base { font-size: 1.0625rem; }   /* 17px (was 16px) */
+@layer components {
+  .card {
+    background: var(--color-surface);
+    border-radius: var(--radius-card);
+  }
 
-/* Soft shadow utilities (cards / containers) */
-@utility shadow-soft {
-  box-shadow: 0 4px 14px rgba(27, 35, 48, 0.08);
-}
-@utility shadow-card {
-  box-shadow: 0 2px 8px rgba(27, 35, 48, 0.05);
+  /* Pill buttons: sunny primary, dark, outline, quiet. */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    padding: 0.875rem 1.5rem;
+    font-weight: 700;
+    font-size: 0.9375rem;
+    line-height: 1.25rem;
+    transition: background-color 150ms, color 150ms, transform 150ms, box-shadow 150ms;
+    white-space: nowrap;
+  }
+  .btn:active:not(:disabled) { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn:focus-visible, .chip-btn:focus-visible, .icon-btn:focus-visible {
+    outline: 3px solid var(--color-grape);
+    outline-offset: 2px;
+  }
+  .btn-sun { background: var(--color-sun); color: var(--color-ink); }
+  .btn-sun:hover:not(:disabled) { background: var(--color-sun-deep); }
+  .btn-dark { background: var(--color-ink); color: #fff; }
+  .btn-dark:hover:not(:disabled) { background: #3a3631; }
+  .btn-outline { background: transparent; color: var(--color-ink); box-shadow: inset 0 0 0 2px var(--color-ink); }
+  .btn-outline:hover:not(:disabled) { background: var(--color-ink); color: #fff; }
+  .btn-quiet { background: var(--color-sunken); color: var(--color-ink); }
+  .btn-quiet:hover:not(:disabled) { background: var(--color-line); }
+  .btn-sm { padding: 0.5rem 1rem; font-size: 0.8125rem; }
+
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    transition: background-color 150ms;
+  }
+  .icon-btn:hover { background: var(--color-sunken); }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 9999px;
+    padding: 0.375rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+  .chip-btn { cursor: pointer; transition: background-color 150ms; }
+
+  .field {
+    width: 100%;
+    border-radius: 9999px;
+    background: var(--color-paper);
+    padding: 0.875rem 1.25rem;
+    font-size: 0.9375rem;
+    color: var(--color-ink);
+    outline: none;
+    box-shadow: inset 0 0 0 2px transparent;
+    transition: box-shadow 150ms;
+  }
+  .field:focus { box-shadow: inset 0 0 0 2px var(--color-ink); }
+  .field::placeholder { color: var(--color-muted); }
+
+  .eyebrow {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
 }
 
-/* Hard offset shadow utilities (buttons / video frame — zine style) */
-@utility shadow-hard {
-  box-shadow: 3px 3px 0 #1B2330;
-}
-@utility shadow-hard-lg {
-  box-shadow: 4px 4px 0 #1B2330;
-}
-
-/* Ink-card: square + ink border — auth page card */
-.ink-card {
-  border: 2px solid #1B2330;
-  box-shadow: 3px 3px 0 #1B2330;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
-input[type='text'],
-input[type='email'],
-input[type='password'] {
-  outline: none;
+/*
+ * Screens. A page marks its root with data-screen and the whole window takes that colour, behind
+ * the header and the phone tab bar too: Home is rose with a cream sheet over it, Sessions teal, the
+ * results cream. :has() needs no script, so there is no flash of the default page colour.
+ */
+:root { --screen: var(--color-paper); }
+:root:has([data-screen="home"]) { --screen: var(--color-rose); }
+:root:has([data-screen="teal"]) { --screen: var(--color-teal); }
+:root:has([data-screen="cream"]) { --screen: var(--color-cream); }
+/* Teal screens carry faint diagonal stripes, from the very top (behind the header) down. */
+body:has([data-screen="teal"]) {
+  background-image: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.07) 0 2px, transparent 2px 26px);
+}
+/* On rose and teal the sheet runs to the bottom of the window, under the phone tab bar. */
+body:has([data-screen="home"]) main,
+body:has([data-screen="teal"]) main { padding-bottom: 0; display: flex; flex-direction: column; }
+
+@layer components {
+  /* A cream sheet pulled up over a coloured screen. (No grab handle: it cannot be dragged, and the
+     user read the handle as a stray line.) */
+  .sheet {
+    position: relative;
+    background: var(--color-cream);
+    border-radius: 2.25rem 2.25rem 0 0;
+    padding-top: 1.75rem;
+  }
 }

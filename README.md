@@ -6,6 +6,17 @@ This project analyzes dance videos and provides targeted feedback to dancers on 
 ## How it works
 The app uses MediaPipe to track the dancer's body, letting the computer measure the angles their joints form throughout the video. It detects technique moves (jumps, leaps, and turns), scores each one against technique-based thresholds, and returns matching coaching corrections including what to fix, why it matters, and a drill to practice it. These critiques, alongside a compliment highlighting the dancer's strongest area, are shown around the MediaPipe-annotated video.
 
+## What it does and does not critique
+The app critiques **technique-based movements** — turns, leaps, jumps, flips, arabesques, battements.
+These have a correct answer: a pirouette has a defined retiré, a vertical axis and a spot; a jeté has
+a defined split, leg extension and landing. The geometry *is* the technique, so measuring it is real
+coaching that a dancer can act on.
+
+**Contemporary and interpretive movement is intentionally left alone.** There is no correct shape to
+measure it against — choosing the shape is the artistic content. Grading it by joint angles would be
+like asking a computer to grade an original painting, and a confident score on movement that has no
+correct form is worse for a dancer than no score at all. So the app stays where it can be right.
+
 ## Screenshots
 <p align="center">
   <img src="docs/screenshots.png" width="90%" alt="App screenshots" />

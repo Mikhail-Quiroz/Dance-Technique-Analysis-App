@@ -6,9 +6,9 @@
 |-------|-------------|--------|
 | 0 | Scaffold + shared JSON refactor | ✅ Done |
 | 1 | Auth end-to-end (Supabase + Next.js) | ✅ Done |
-| 2 | Full upload path (FastAPI + background job + results UI) | ✅ Done |
+| 2 | Full upload path (results UI; analysis now runs in the browser on the live engine) | ✅ Done |
 | 3 | Persistence + session gallery (/session/[id], rename, delete, RLS) | ✅ Done |
-| 4 | Polish (mobile, migration script) | 🔶 In progress |
+| 4 | Polish (mobile: installable app done; migration script) | 🔶 In progress |
 
 ## Phase 2 — Real-time live coaching (/live)
 
@@ -16,9 +16,10 @@
 |-------|-------------|--------|
 | 2a | /live page: camera + mirrored live skeleton overlay at real-time FPS | ✅ Done |
 | 2b | Live jump/leap rep detection + on-screen cue + rep tally | 🔶 Built — pending live camera verification |
-| 2b-ii | Turn detection + move-selector chips (jumps vs. turns) | ⬜ Not started |
+| 2b-arabesque | Live arabesque detection + critique (height, knee, standing leg, carriage) | 🔶 Built — pending live camera verification |
+| 2b-ii | Live pirouette detection + critique (relevé, passé, spot, axis, hips, arms) | 🔶 Built — pending live camera verification; move-selector chips not started |
 | 2c | Voice cues via SpeechSynthesis (cooldown rules, praise after clean reps, mute) | ⬜ Not started |
-| 2d | Future: save live sessions to the library (MediaRecorder); Claude-phrased cues | ⬜ Future |
+| 2d | Live session summary + highlight reel, saved to Sessions | ✅ Done (Claude-phrased cues still future) |
 
 Setting the app up yourself? Jump to [Supabase setup](#supabase-setup-required-to-run-the-app).
 
@@ -100,7 +101,7 @@ Dance Technique App/
 - [x] `GET /sessions/{id}`: full report + 1-hour signed URLs for video + thumb
 - [x] `PATCH /sessions/{id}`: rename
 - [x] `DELETE /sessions/{id}`: deletes row + Storage objects (idempotent; clears the `jobs` FK first)
-- [x] Session gallery: responsive card grid with hover tilt, rename/delete/delete-all — lives on `/analyze` **below the current analysis**, not on a separate page. `/diary` simply redirects to `/analyze` (the nav needs only one destination).
+- [x] Session gallery: responsive card grid with rename/delete/delete-all. Since the 2026-10-04 redesign it has its own page (`/diary`, "Sessions" in the nav) and `/analyze` shows the three most recent with a "See all" link.
 - [x] `/session/[id]` detail view: video player + full report + rename/delete controls
 - [x] `tests/test_sessions_auth_isolation.py`: user B cannot read/rename/delete user A's sessions
 - [ ] `scripts/migrate_library.py`: import existing `library/` sessions — **not built yet, tracked under Slice 4**
@@ -126,7 +127,8 @@ Improvements made after the original slice plan:
 - [x] `tests/videos/test.mp4` fixture + `tests/test_pipeline_end_to_end.py` (full POST-/analyze-equivalent pipeline run)
 - [x] Empty states (no sessions, no dance detected) + error states (failed job, upload validation, network retry during polling)
 - [x] Full `README.md`: prerequisites, Supabase setup link, env vars, run commands
-- [ ] Mobile responsiveness pass throughout
+- [x] Mobile responsiveness pass throughout (phone tab bar, safe areas, Live on a phone held upright)
+- [x] Installable app (web app manifest, icons, offline page) - see "Mobile app" below
 - [ ] `scripts/migrate_library.py`: import legacy `library/` sessions idempotently
 - [ ] Final `python -m pytest tests/` pass before calling the slice done (currently 44/44 passing)
 
@@ -171,22 +173,118 @@ In-browser real-time coaching on a new `/live` route (same auth protection as `/
       logic is a second streaming state machine, deferred to 2b-ii below) and the
       move-selector chip UI (not meaningful with only one option) also deferred to 2b-ii
 
-### Slice 2b-ii — turn detection + move-selector chips (next)
-- [ ] Port `detect_turns`'s shoulder-rotation signal to TS: shoulder vector → angle
-      (`arctan2`), median filter, unwrap, angular velocity, spinning mask, valley-splitting
-      to separate multiple pirouettes within one continuous spin
-- [ ] Port `compute_turn_metrics` scoring
-- [ ] Move selector chips (same pattern as `/analyze`'s `selectedMoves`/`toggleMove`) so the
-      dancer picks jumps vs. turns; rep tally + cue caption already built in 2b, reused as-is
+### Detection fixes (jumps, leaps, arabesques — live and upload)
+- [x] **Floor gate**: nothing is a jump unless the lowest point of the feet leaves the floor.
+      A relevé arabesque raised the hips and split the legs with the supporting toes planted,
+      and read as a split leap. Live (`floorClearRatio`) and upload (`_feet_left_floor`).
+- [x] **Leaps read as jumps**: world and image landmarks each vote on the split (world depth
+      compresses a leap filmed across the frame). Upload path now classifies over the airborne
+      flight frames with the same separation / leg-angle / knee gates as /live, replacing the
+      single-apex-frame "> 100°" test.
+- [x] **Dynamic arabesques**: confirmed after 250 ms once the leg settles (plateau test) and
+      emitted immediately, instead of after an 800 ms hold and only once the leg came down.
+      `hold_duration_s` no longer scored for arabesques.
+- [x] `detect_grand_battements` NameError on overlapping L/R candidates fixed.
+
+### Slice 2b-ii — turn detection + move-selector chips
+- [x] `frontend/lib/live/turnDetector.ts`: streaming port of the shoulder-rotation signal
+      (unwrap, 5-frame median, angular velocity on real timestamps, gap merging, ≥300°)
+- [x] Identification: supporting foot must stay on the floor; working leg must be in passé,
+      otherwise the turn is counted as a plain "turn" with an empty metrics object
+- [x] Pirouette critique (shared with `analysis/metrics.py` `_pirouette_form_metrics`):
+      `releve_angle`, `retire_connection`, `spot_follow`, `turn_axis_tilt`, `hip_level`,
+      `support_knee_ext`, `arm_height_high` / `arm_height_low`, `elbow_drop`
+- [ ] **Not yet verified with a real camera** — spot tracking relies on face landmarks while
+      the dancer faces the camera, and MediaPipe can swap left/right while the back is turned
+- [ ] Valley-splitting of back-to-back pirouettes (a continuous spin is one event for now)
+- [ ] Move selector chips (same pattern as `/analyze`'s `selectedMoves`/`toggleMove`)
 
 ### Slice 2c — voice
 - [ ] SpeechSynthesis: max one spoken cue per rep, no repeat within 8 s, praise after 3 clean reps, mute toggle; everything spoken also captioned
 
-### Slice 2d — future (not being built yet)
-- [ ] MediaRecorder capture that saves a live session to the library like an upload
+### Slice 2d — live session summary and highlight reel ✅ (2026-10-07)
+- [x] Stop opens a summary: the same results an upload gets (score, what to work on first, strongest,
+      score per move, every move's feedback), built by `liveReport` (`lib/live/highlights.ts`); moves the
+      engine was still holding back are flushed rather than lost
+- [x] Optional recording ("Record a highlight reel", on by default, remembered on the device; a Rec chip
+      while it runs; stops after 15 minutes): `lib/live/recorder.ts`, one part per camera or frame shape
+- [x] Highlight reel cut in the browser (`lib/live/reel.ts`): each move with 1.2 s of run-up and 0.9 s of
+      finish, moves under 0.8 s apart played straight through, the rest cut out; the skeleton drawn over
+      it from the poses read live. Measured against the pose model reading the reel itself: within 18 ms.
+      A recording's media time 0 is worked back from its end (MediaRecorder's start event comes 150-300 ms
+      late, and Chrome's mp4 and webm disagree on what time 0 is)
+- [x] Save to Sessions (reel, report with `source: "live"`, thumbnail, pose track); a session recorded
+      without a reel saves without a video. Titled "Live session NNN"; the session page says it was live
+      and how long you danced. Download reel saves the clip locally
 - [ ] Backend Claude-generated natural phrasing for cues
 
-> Note: `getUserMedia` requires a secure context — localhost is fine for dev; testing on a phone over LAN will need https (deferred to deployment).
+> Note: `getUserMedia` requires a secure context — localhost is fine for dev; on a phone over the Wi-Fi use `npm run dev:phone` (https), see "Mobile app" below.
+
+### Uploads on the live engine + friendly redesign (2026-10-04) ✅
+- [x] Upload page coaches only the moves the real-footage suite verifies (straight jump, split /
+      switch / calypso / russian, pirouette, à la seconde, chaîné, piqué, arabesque) — identified
+      automatically, so the move-selector chips are gone
+- [x] The clip is analysed in the browser by the same `MoveEngine` as /live (`lib/live/clip.ts`
+      `ClipAnalyzer`, shared with the real-footage replay; `lib/upload/analyzeVideo.ts` reads every
+      frame, recovering any the page was too busy to catch), on MediaPipe's CPU delegate, whose
+      landmarks match the fixtures (the GPU delegate's turned one reference arabesque into two)
+- [x] `MoveEngine.flush()`: a clip trimmed 0.6 s after the move still counts it (tested on all 100 clips)
+- [x] `POST /sessions` saves the original video + report + thumbnail + pose track; results page
+      draws the skeleton over the video and lists every move with /live's feedback
+- [x] Browser verification on the 100 reference clips through the real upload page: 96/100 named and counted exactly as the answer key (fixture replays: 100/100). The four misses are detector thresholds the browser's slightly different landmarks fall on the other side of: split leap 2 missed (far ankle visibility 0.49 against the 0.5 take-off gate), switch leap 9 adds a 51° preparation as an arabesque (entry 50°), russian 9 adds an uncritiqued turn during the walk-in, à la seconde 6 splits 1 + 4 instead of 2 + 2-3 (few leg-out frames)
+- [x] Redesign: warm grey / mustard / cocoa / olive palette, Bricolage Grotesque + Plus Jakarta Sans,
+      rounded cards and pill buttons, mascot, sticker headline, phone tab bar with Live in the middle,
+      Sessions on its own page (`/diary`)
+- [x] /live stays on the GPU delegate: on the CPU it ran at 6.5 fps at 720p (GPU: 23 fps), and a
+      100-clip browser run scored both 96/100. Instead the same clips are now also extracted by the
+      browser's MediaPipe on the CPU and the GPU (`scripts/extract-browser-fixtures.mjs`), and the
+      real-footage suite identifies moves on all three sets
+- [x] Detectors made robust where the browser runtimes tipped them: a separate 0.4 ankle bar for
+      opening and identifying a leap (the far ankle hovered at 0.44-0.50), brief arabesque holds need
+      60 degrees, a one-frame ground glitch no longer ends an arabesque hold, a turn-round while
+      walking is not counted as a turn, and a switch may close just before a late-read take-off.
+      browser-gpu 96 -> 99/100, browser-cpu 95 -> 97/100, python unchanged at 100/100
+- [ ] Known browser misses (KNOWN in realFootage.test.ts): à la seconde 6's seconde/pirouette split,
+      arabesque 1 vetoed by the turn after it (CPU), switch leap 2's turn-round (CPU), switch leap 8
+      at 15 fps (CPU)
+
+### Live feedback feed, russians, mobile app (2026-10-05) ✅
+- [x] /live keeps every rep's feedback in a feed, newest first (the last 40), instead of replacing
+      the one cue card; Stop sits above it with the tallies
+- [x] Russians are judged at webcam frame rates: the straddle needs 2 wide flight frames, 1 when the
+      capture is slower than ~22 fps (the straddle tops out for 150-250 ms). Unjudged russians
+      ("too little of you was visible") went from 1 / 3 / 9 of 30 to 0 / 0 / 1 at native / 20 / 15 fps
+- [x] Installable app (`app/manifest.ts`, icons from `scripts/make-app-icons.mjs`, iPhone home-screen
+      meta, `viewport-fit=cover` with safe-area insets). Chrome reports no installability errors
+- [x] `public/sw.js` (production builds only): an offline page instead of the browser's error, and
+      nothing else cached, so a release is never hidden behind a stale copy
+- [x] Live on a phone: the preview keeps the camera's proportions (a phone held upright films 3:4 /
+      9:16) within 70% of the screen height; the newest cue shows over the video for 6 s; front /
+      back camera switch; the screen is kept awake during a session (Wake Lock); a rotated phone or
+      the other camera restarts the engine at the new frame shape
+- [x] The engine re-expresses every frame in the 16:9 units its thresholds were tuned in
+      (`REFERENCE_ASPECT` in `moveEngine.ts`): replayed as 3:4 crops of the same frames, 4 of 100
+      clips changed answer before (a switch leap read as a russian, a split leap went missing), 0 after.
+      Turn travel is measured in true torso lengths, differenced before dividing: it read 0.2-0.4 torso
+      lengths of drift into turns on the spot, depending on where in the frame the dancer stood.
+      Regression test: "a phone held upright sees the same moves" (3 crops x 100 clips x 3 sets)
+- [x] `npm run dev:phone`: the dev server over https so a phone on the same Wi-Fi can use the camera;
+      `allowedDevOrigins` takes this computer's network addresses, and a local backend is reached
+      through the dev server's `/backend` proxy (`next.config.ts`, `lib/sessions.ts`)
+- [x] Production build fixed (`/auth` read the URL with `useSearchParams` and made a Supabase client
+      while being prerendered)
+- [ ] Live, real time at 15 fps: split leap 1 is called a switch leap about half the time, upright or
+      not (frame-exact replays always say split) - the switch/split call is timing-sensitive
+- [x] Spelling: the app's text is American English ("analyze", "practice", "center"); British spellings
+      read as mistakes to the user
+- [x] Palette: six options previewed on the real pages (https://claude.ai/artifact/7b51cVzTs5zPGvPPNNKYpR);
+      the user chose Rose & teal and asked for its reference screens: Home rose with a cream sheet, results
+      cream with a big score and a score line, Sessions full teal with a podium. Built 2026-10-07, mobile
+      first; new app icon (gold Pip on rose). Preview: https://claude.ai/artifact/TYpJ5Uv2pT2S6EjHyRnizb
+- [ ] Publishing: deploy the site (frontend + backend over https), then wrap it for the stores -
+      Android through a Trusted Web Activity (Bubblewrap / PWABuilder) or Capacitor, iOS through
+      Capacitor (needs a Mac with Xcode and an Apple developer account), Windows through PWABuilder
+      (Microsoft Store); Mac / Windows can also install the site as an app straight from the browser
 
 ---
 

@@ -42,3 +42,5 @@ next-env.d.ts
 
 # synced from /shared at the monorepo root (copy-shared.mjs) — not the source of truth
 /lib/live/shared/
+
+certificates

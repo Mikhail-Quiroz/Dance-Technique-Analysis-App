@@ -1,4 +1,4 @@
-// MediaPipe PoseLandmarker setup + skeleton drawing for the /live page.
+// MediaPipe PoseLandmarker setup + skeleton drawing for /live and the upload page.
 //
 // Runtime decisions (see README "Live coaching assets"):
 // - VIDEO running mode driven by requestAnimationFrame, not LIVE_STREAM:
@@ -6,9 +6,9 @@
 //   skeleton is drawn against the exact frame currently on screen.
 //   LIVE_STREAM delivers results in an async callback that can land after
 //   the next paint, which makes the overlay visibly lag the video.
-// - pose_landmarker_lite model: real-time on ordinary laptops. The upload
-//   pipeline (backend) keeps using the full model where accuracy matters
-//   more than latency. Swap MODEL_PATH to change variants.
+// - pose_landmarker_lite model: real-time on ordinary laptops, and the model
+//   the real-footage fixtures are extracted with. Uploads run it too (on the
+//   CPU delegate, see createPoseLandmarker). Swap MODEL_PATH to change variants.
 // - wasm + model served from /public (prepared by scripts/copy-mediapipe-wasm.mjs).
 
 import {
@@ -22,28 +22,43 @@ const MODEL_PATH = '/models/pose_landmarker_lite.task'
 
 export type { NormalizedLandmark }
 
-export async function createPoseLandmarker(): Promise<PoseLandmarker> {
+/**
+ * `delegate`: 'GPU' (the default, for /live) runs in real time and falls back to the CPU where the
+ * GPU delegate will not start. 'CPU' is for uploads, where time is not critical: its landmarks
+ * match the real-footage fixtures (Python MediaPipe, also on the CPU), and the GPU delegate's do
+ * not quite - on one reference arabesque they read a single 119-degree hold as two 70-degree ones.
+ */
+export async function createPoseLandmarker(delegate: 'GPU' | 'CPU' = 'GPU'): Promise<PoseLandmarker> {
   const fileset = await FilesetResolver.forVisionTasks(WASM_PATH)
-  try {
-    return await PoseLandmarker.createFromOptions(fileset, {
-      baseOptions: { modelAssetPath: MODEL_PATH, delegate: 'GPU' },
+  const create = (d: 'GPU' | 'CPU') =>
+    PoseLandmarker.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: MODEL_PATH, delegate: d },
       runningMode: 'VIDEO',
       numPoses: 1,
       minPoseDetectionConfidence: 0.5,
       minPosePresenceConfidence: 0.5,
       minTrackingConfidence: 0.5,
     })
+  if (delegate === 'CPU') return create('CPU')
+  try {
+    return await create('GPU')
   } catch {
     // Some machines/browsers fail GPU delegate init — fall back to CPU.
-    return await PoseLandmarker.createFromOptions(fileset, {
-      baseOptions: { modelAssetPath: MODEL_PATH, delegate: 'CPU' },
-      runningMode: 'VIDEO',
-      numPoses: 1,
-      minPoseDetectionConfidence: 0.5,
-      minPosePresenceConfidence: 0.5,
-      minTrackingConfidence: 0.5,
-    })
+    return await create('CPU')
   }
+}
+
+/**
+ * The delegate each page runs: /live the GPU (real time), uploads the CPU (matches the fixtures).
+ * In development, `?delegate=cpu` or `?delegate=gpu` on either page overrides it, to compare them.
+ */
+export function delegateFor(page: 'live' | 'upload'): 'GPU' | 'CPU' {
+  if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+    const asked = new URLSearchParams(window.location.search).get('delegate')
+    if (asked === 'cpu') return 'CPU'
+    if (asked === 'gpu') return 'GPU'
+  }
+  return page === 'live' ? 'GPU' : 'CPU'
 }
 
 // MediaPipe 33-point skeleton (same connection list the Python renderer uses).
@@ -59,10 +74,10 @@ const CONNECTIONS: ReadonlyArray<readonly [number, number]> = [
 ]
 
 const VIS_THRESH = 0.5
-// Zine accent pink for bones/joints, dark outline — mirrors render/overlay.py.
-const CLR_BONE = '#e8568f'
-const CLR_JOINT = '#e8568f'
-const CLR_OUTLINE = '#1a1008'
+// The app's sunny yellow, with a dark outline so it reads on any background.
+const CLR_BONE = '#FBB829'
+const CLR_JOINT = '#FFFFFF'
+const CLR_OUTLINE = '#1E1C19'
 
 /**
  * Draw the skeleton onto a canvas that overlays a MIRRORED video preview.
@@ -70,6 +85,9 @@ const CLR_OUTLINE = '#1a1008'
  * The landmark data itself is anatomical/unmirrored — all math must run on
  * the raw coordinates. Only here, at draw time, is x flipped (x' = 1 - x)
  * so the overlay lines up with the CSS-mirrored <video>.
+ *
+ * `width` x `height` is the picture's size on the canvas and `origin` its top-left corner, for a
+ * video letterboxed inside its element (an uploaded clip in the results player).
  */
 export function drawSkeleton(
   ctx: CanvasRenderingContext2D,
@@ -77,10 +95,11 @@ export function drawSkeleton(
   width: number,
   height: number,
   mirror = true,
+  origin: { x: number; y: number } = { x: 0, y: 0 },
 ): void {
   const px = (lm: NormalizedLandmark) => ({
-    x: (mirror ? 1 - lm.x : lm.x) * width,
-    y: lm.y * height,
+    x: origin.x + (mirror ? 1 - lm.x : lm.x) * width,
+    y: origin.y + lm.y * height,
   })
 
   ctx.lineCap = 'round'

@@ -5,6 +5,8 @@
   "scripts": {
     "predev": "node scripts/copy-mediapipe-wasm.mjs && node scripts/copy-shared.mjs",
     "dev": "next dev",
+    "predev:phone": "node scripts/copy-mediapipe-wasm.mjs && node scripts/copy-shared.mjs",
+    "dev:phone": "next dev --experimental-https",
     "prebuild": "node scripts/copy-mediapipe-wasm.mjs && node scripts/copy-shared.mjs",
     "build": "next build",
     "start": "next start",
@@ -23,6 +25,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "puppeteer-core": "^23.11.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^3.2.7"

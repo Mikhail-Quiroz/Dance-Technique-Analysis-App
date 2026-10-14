@@ -15,7 +15,12 @@ from analysis.moves import JumpEvent, TurnEvent, ArabesqueEvent, PliéEvent, Rel
 # ---------------------------------------------------------------------------
 # MediaPipe landmark indices
 # ---------------------------------------------------------------------------
+NOSE                   = 0
+L_EAR,      R_EAR      = 7, 8
 L_SHOULDER, R_SHOULDER = 11, 12
+L_ELBOW,    R_ELBOW    = 13, 14
+L_WRIST,    R_WRIST    = 15, 16
+L_INDEX,    R_INDEX    = 19, 20
 L_HIP,      R_HIP      = 23, 24
 L_KNEE,     R_KNEE     = 25, 26
 L_ANKLE,    R_ANKLE    = 27, 28
@@ -269,6 +274,12 @@ def compute_turn_metrics(
     metrics["vert_stack"] = float(np.median(stack_vals)) if stack_vals else None
 
     if turn_style == "pirouette":
+        # ---- Pirouette form: releve, passe connection, spot, axis, hips, arms ----
+        form = _pirouette_form_metrics(
+            image_lm, world_lm, mid_frames, list(range(sf, ef + 1)), turn.supporting_leg,
+        )
+        metrics.update(form)
+
         # ---- Retiré distance ----
         retire_vals: list[float] = []
         for t in mid_frames:
@@ -277,6 +288,10 @@ def compute_turn_metrics(
                 retire_vals.append(d / body_scale)
         metrics["retire_dist"]       = float(np.median(retire_vals)) if retire_vals else None
         metrics["working_knee_fold"] = knee_fold_raw
+        # retire_connection measures the same fault in 3-D (and catches a passé that drifts
+        # partway through the turn); scoring both would cue the dancer twice for one fault.
+        if form.get("retire_connection") is not None:
+            metrics["retire_dist"] = None
         # à la seconde metrics not applicable
         metrics["seconde_height"]     = None
         metrics["seconde_knee_ext"]   = None
@@ -304,6 +319,144 @@ def compute_turn_metrics(
         metrics["working_knee_fold"] = None
 
     return metrics
+
+
+# ---------------------------------------------------------------------------
+# Pirouette form metrics -- kept in step with pirouetteMetrics() in
+# frontend/lib/live/turnDetector.ts. Each key maps to a cue in shared/thresholds.json:
+#
+#   releve_angle       supporting foot pitch, heel over toe          -> press_releve
+#   retire_connection  working toe to supporting knee / leg length   -> connect_passe
+#                      (75th percentile: a passé that drifts for half the turn IS the fault)
+#   spot_follow        head yaw per unit body yaw while facing front -> quick_spot
+#   turn_axis_tilt     supporting ankle -> shoulders, off vertical   -> vertical_axis
+#   hip_level          hip line off horizontal                       -> level_hips
+#   support_knee_ext   supporting knee straightness                  -> straighten_standing_leg
+#   arm_height_high    shoulder -> fingertip slope below horizontal, higher arm -> lower_arms_first
+#   arm_height_low     the same, lower arm                           -> lift_arms_first
+#   elbow_drop         elbow below wrist / forearm length            -> lift_elbows
+#
+# All in WORLD coordinates with "up" taken from the body (shoulders above hips), so neither
+# MediaPipe's Y convention nor the dancer's facing direction is assumed.
+# ---------------------------------------------------------------------------
+
+def _yaw_from(ref: tuple[float, float], v: np.ndarray) -> float:
+    """Signed angle in degrees from ref to v, in the horizontal x-z plane."""
+    return float(np.degrees(np.arctan2(ref[0] * v[2] - ref[1] * v[0], ref[0] * v[0] + ref[1] * v[2])))
+
+
+def _spot_follow(image_lm, world_lm, frames, window_deg=100.0, min_frames=4, min_spread=40.0):
+    """Least-squares slope of head yaw on body yaw, over frames with the face toward the camera.
+
+    0: the head held the spot while the body turned underneath it.  1: the head rode along with
+    the shoulders (a slow spot).  None when too few face frames were seen to judge.
+    """
+    body_yaws, head_yaws = [], []
+    for t in frames:
+        if not _vis(image_lm, t, NOSE, L_EAR, R_EAR):
+            continue
+        right = _pt3(world_lm, t, R_SHOULDER) - _pt3(world_lm, t, L_SHOULDER)
+        fwd   = _pt3(world_lm, t, NOSE) - _mid(_pt3(world_lm, t, L_EAR), _pt3(world_lm, t, R_EAR))
+        if np.hypot(right[0], right[2]) < 1e-6 or np.hypot(fwd[0], fwd[2]) < 1e-6:
+            continue
+        # Facing the camera: the right shoulder is at image left (-x), the face points at -z.
+        body = _yaw_from((-1.0, 0.0), right)
+        if abs(body) > window_deg:
+            continue
+        body_yaws.append(body)
+        head_yaws.append(_yaw_from((0.0, -1.0), fwd))
+    if len(body_yaws) < min_frames or max(body_yaws) - min(body_yaws) < min_spread:
+        return None
+    b, h = np.array(body_yaws), np.array(head_yaws)
+    var_b = float(np.sum((b - b.mean()) ** 2))
+    if var_b < 1e-9:
+        return None
+    return float(np.clip(np.sum((b - b.mean()) * (h - h.mean())) / var_b, 0.0, 1.5))
+
+
+def _pirouette_form_metrics(
+    image_lm: np.ndarray,
+    world_lm: np.ndarray,
+    mid_frames: list[int],
+    all_frames: list[int],
+    supporting_leg: str,
+) -> dict:
+    if supporting_leg == "L":
+        s_hip, s_knee, s_ankle, s_heel, s_toe = L_HIP, L_KNEE, L_ANKLE, L_HEEL, L_FOOT
+        w_toe = R_FOOT
+    else:
+        s_hip, s_knee, s_ankle, s_heel, s_toe = R_HIP, R_KNEE, R_ANKLE, R_HEEL, R_FOOT
+        w_toe = L_FOOT
+
+    releve, connection, axis_tilt, hip_level, supp_knee = [], [], [], [], []
+    arm_high, arm_low, elbow_drop = [], [], []
+
+    for t in mid_frames:
+        shoulder_mid = _mid(_pt3(world_lm, t, L_SHOULDER), _pt3(world_lm, t, R_SHOULDER))
+        hip_mid      = _mid(_pt3(world_lm, t, L_HIP), _pt3(world_lm, t, R_HIP))
+        up_sign      = float(np.sign(shoulder_mid[1] - hip_mid[1]) or -1.0)
+
+        def up(v: np.ndarray) -> float:
+            return float(v[1] * up_sign)
+
+        if _vis(image_lm, t, s_heel, s_toe):
+            f = _pt3(world_lm, t, s_heel) - _pt3(world_lm, t, s_toe)
+            rise, horiz = up(f), float(np.hypot(f[0], f[2]))
+            if np.hypot(rise, horiz) > 1e-6:
+                releve.append(float(np.degrees(np.arctan2(rise, horiz))))
+
+        leg_len = (_dist(_pt3(world_lm, t, s_hip), _pt3(world_lm, t, s_knee))
+                   + _dist(_pt3(world_lm, t, s_knee), _pt3(world_lm, t, s_ankle)))
+        if leg_len > 1e-6 and _vis(image_lm, t, w_toe, s_knee):
+            connection.append(_dist(_pt3(world_lm, t, w_toe), _pt3(world_lm, t, s_knee)) / leg_len)
+
+        if _vis(image_lm, t, s_ankle, L_SHOULDER, R_SHOULDER):
+            axis = shoulder_mid - _pt3(world_lm, t, s_ankle)
+            n = float(np.linalg.norm(axis))
+            if n > 1e-6:
+                axis_tilt.append(float(np.degrees(np.arccos(min(1.0, abs(up(axis)) / n)))))
+
+        hl = _pt3(world_lm, t, R_HIP) - _pt3(world_lm, t, L_HIP)
+        n = float(np.linalg.norm(hl))
+        if n > 1e-6:
+            hip_level.append(float(np.degrees(np.arcsin(min(1.0, abs(up(hl)) / n)))))
+
+        if _vis(image_lm, t, s_hip, s_knee, s_ankle):
+            a = angle_at(_pt3(world_lm, t, s_knee), _pt3(world_lm, t, s_hip), _pt3(world_lm, t, s_ankle))
+            if not np.isnan(a):
+                supp_knee.append(a)
+
+        slopes, drops = [], []
+        for sh, el, wr, ix in ((L_SHOULDER, L_ELBOW, L_WRIST, L_INDEX), (R_SHOULDER, R_ELBOW, R_WRIST, R_INDEX)):
+            hand = ix if _vis(image_lm, t, ix) else wr
+            if _vis(image_lm, t, sh, hand):
+                arm = _pt3(world_lm, t, sh) - _pt3(world_lm, t, hand)
+                n = float(np.linalg.norm(arm))
+                if n > 1e-6:
+                    slopes.append(float(np.degrees(np.arcsin(np.clip(up(arm) / n, -1.0, 1.0)))))
+            if _vis(image_lm, t, el, wr):
+                fore = _pt3(world_lm, t, wr) - _pt3(world_lm, t, el)
+                n = float(np.linalg.norm(fore))
+                if n > 1e-6:
+                    drops.append(up(fore) / n)   # positive: elbow BELOW the wrist
+        if slopes:
+            arm_high.append(min(slopes))
+            arm_low.append(max(slopes))
+        if drops:
+            elbow_drop.append(max(drops))
+
+    med = lambda xs: float(np.median(xs)) if xs else None   # noqa: E731
+    return {
+        "releve_angle":      med(releve),
+        "retire_connection": float(np.percentile(connection, 75)) if connection else None,
+        "spot_follow":       _spot_follow(image_lm, world_lm, all_frames),
+        "turn_axis_tilt":    med(axis_tilt),
+        "hip_level":         med(hip_level),
+        "support_knee_ext":  med(supp_knee),
+        "arm_height_high":   med(arm_high),
+        "arm_height_low":    med(arm_low),
+        "elbow_drop":        med(elbow_drop),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -338,14 +491,42 @@ def compute_arabesque_metrics(
 
     metrics: dict = {}
 
-    # ---- Arabesque height: angle of working leg above horizontal (world coords) ----
+    # ---- Arabesque height: how far the working leg is raised BEHIND the dancer ----
+    #
+    # Degrees from hanging straight down: 0 standing, 90 the leg horizontal behind, past 90
+    # a penche.  This is the number dancers and teachers actually say ("she has a 90 degree
+    # arabesque"), and it is scored against arabesque_height in shared/thresholds.json.
+    #
+    # It used to be degrees above HORIZONTAL, which is 90 less, against a band of 30 (poor)
+    # to 70 (excellent) -- so a textbook 90 degree arabesque measured 0 and scored 0/100
+    # while being told to lift the leg higher, and the band described an elite penche rather
+    # than any arabesque.  The band moved with this definition; read the two together.  The
+    # streaming port in frontend/lib/live/arabesqueDetector.ts computes the same angle.
+    #
+    # Axes are taken from the BODY, not the camera: "down" from the shoulder-to-hip
+    # relationship (so the sign of the world Y axis does not have to be assumed -- see
+    # detect_arabesques), and "backward" from the hip line, so the dancer may stand at any
+    # angle to the lens.  Gravity-referenced rather than torso-referenced on purpose: an
+    # arabesque pitches the chest forward, and measuring against a tilted torso would credit
+    # that pitch as extra height.  Pitching forward is arabesque_tilt's job.
     height_vals: list[float] = []
     for t in [pf] + mid_frames:
-        hip_pos   = _pt3(world_lm, t, w_hip)
-        ankle_pos = _pt3(world_lm, t, w_ankle)
-        leg_vec   = ankle_pos - hip_pos
-        horiz     = float(np.sqrt(leg_vec[0] ** 2 + leg_vec[2] ** 2))
-        elev_deg  = float(np.degrees(np.arctan2(leg_vec[1], horiz + 1e-9)))
+        shoulder_mid = (_pt3(world_lm, t, L_SHOULDER) + _pt3(world_lm, t, R_SHOULDER)) / 2.0
+        hip_mid      = (_pt3(world_lm, t, L_HIP) + _pt3(world_lm, t, R_HIP)) / 2.0
+        up_sign      = np.sign(shoulder_mid[1] - hip_mid[1]) or -1.0
+        down         = np.array([0.0, -up_sign, 0.0])
+
+        hip_l, hip_r = _pt3(world_lm, t, L_HIP), _pt3(world_lm, t, R_HIP)
+        right        = np.array([hip_r[0] - hip_l[0], 0.0, hip_r[2] - hip_l[2]])
+        rn           = float(np.linalg.norm(right))
+        right        = right / rn if rn > 1e-9 else np.array([1.0, 0.0, 0.0])
+        # Right-handed body frame (right = forward x up), so backward = down x right.
+        backward     = np.cross(down, right)
+
+        leg          = _pt3(world_lm, t, w_ankle) - _pt3(world_lm, t, w_hip)
+        # atan2(behind, below): negative for a leg carried in FRONT, so a front developpe
+        # cannot be mistaken for a low arabesque.
+        elev_deg     = float(np.degrees(np.arctan2(float(leg @ backward), float(leg @ down))))
         height_vals.append(elev_deg)
     metrics["arabesque_height"] = float(np.median(height_vals)) if height_vals else None
 

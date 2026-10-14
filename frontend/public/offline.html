@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F8E3EB">
+  <title>Offline · Dance Platform</title>
+  <!-- Shown by public/sw.js when a page cannot load. Self-contained: nothing else is reachable offline. -->
+  <style>
+    :root { color-scheme: light; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: #F8E3EB;
+      color: #2A2224;
+      font-family: ui-rounded, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+      box-sizing: border-box;
+    }
+    .card {
+      background: #FFFDF4;
+      border-radius: 28px;
+      padding: 32px 28px 0;
+      max-width: 380px;
+      width: 100%;
+      text-align: center;
+      overflow: hidden;
+    }
+    h1 { font-size: 28px; line-height: 1.1; margin: 0 0 10px; font-weight: 800; letter-spacing: -0.01em; }
+    p { margin: 0 0 22px; color: #6E5C63; line-height: 1.5; }
+    button {
+      border: 0;
+      border-radius: 999px;
+      background: #F5B13D;
+      color: #2A2224;
+      font: inherit;
+      font-weight: 700;
+      padding: 14px 28px;
+      cursor: pointer;
+    }
+    button:focus-visible { outline: 3px solid #6D4FCF; outline-offset: 2px; }
+    svg { display: block; margin: 26px auto 0; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>You&rsquo;re offline</h1>
+    <p>Dance Platform needs a connection to load. Check your Wi-Fi or data, then try again.</p>
+    <button type="button" onclick="location.reload()">Try again</button>
+    <!-- Pip, asleep -->
+    <svg width="150" height="98" viewBox="0 0 120 78" aria-hidden="true">
+      <circle cx="60" cy="13" r="9" fill="#EADFD0"/>
+      <path d="M50 19q10 5 20 0" stroke="#1E1C19" stroke-opacity="0.18" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M2 78a58 58 0 0 1 116 0z" fill="#EADFD0"/>
+      <path d="M35 51 Q43 57 51 51" stroke="#1E1C19" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+      <path d="M69 51 Q77 57 85 51" stroke="#1E1C19" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+      <path d="M54 63q6 5 12 0" stroke="#1E1C19" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+      <ellipse cx="26" cy="64" rx="6" ry="3.5" fill="#fff" fill-opacity="0.35"/>
+      <ellipse cx="94" cy="64" rx="6" ry="3.5" fill="#fff" fill-opacity="0.35"/>
+    </svg>
+  </main>
+</body>
+</html>

@@ -359,6 +359,14 @@ _METRIC_LABELS: dict[str, str] = {
     "tilt_angle":          "Tilt angle (°)",
     "tilt_hold_s":         "Tilt hold (s)",
     "tilt_leg_line":       "Leg line",
+    "releve_angle":       "Relevé height (°)",
+    "retire_connection":  "Passé connection",
+    "spot_follow":        "Spot",
+    "turn_axis_tilt":     "Turn axis (°)",
+    "hip_level":          "Hips level (°)",
+    "arm_height_high":    "Arms not too high",
+    "arm_height_low":     "Arms not too low",
+    "elbow_drop":         "Elbows lifted",
 }
 
 

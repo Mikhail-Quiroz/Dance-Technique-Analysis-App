@@ -55,7 +55,10 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // Not for static files, the installed app's files (manifest, service worker, offline page), or
+  // the dev server's backend proxy (next.config.ts): a proxied upload must not be buffered here,
+  // which would cut it at 10 MB. The backend checks its own Bearer token.
   matcher: [
-    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|sw\\.js|offline\\.html|backend/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

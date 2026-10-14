@@ -1,33 +1,35 @@
-import type { Metadata } from 'next'
-import { Anton, Special_Elite, Space_Grotesk, Yellowtail } from 'next/font/google'
+import type { Metadata, Viewport } from 'next'
+import { Bricolage_Grotesque, Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 import Navbar from '@/components/layout/Navbar'
+import ServiceWorker from '@/components/pwa/ServiceWorker'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { LOCAL_MODE } from '@/lib/local-mode'
 
-const anton = Anton({
-  weight: '400',
+const display = Bricolage_Grotesque({
   subsets: ['latin'],
-  variable: '--font-nf-anton',
+  variable: '--font-nf-display',
 })
-const specialElite = Special_Elite({
-  weight: '400',
+const sans = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  variable: '--font-nf-elite',
-})
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  variable: '--font-nf-grotesk',
-})
-const yellowtail = Yellowtail({
-  weight: '400',
-  subsets: ['latin'],
-  variable: '--font-nf-yellowtail',
+  variable: '--font-nf-sans',
 })
 
 export const metadata: Metadata = {
   title: 'Dance Platform',
-  description: 'AI-powered ballet technique feedback',
+  description: 'Technique feedback for your leaps, turns and balances',
+  applicationName: 'Dance Platform',
+  // Added to an iPhone's home screen it opens full screen, like an app (app/manifest.ts does the same
+  // for Android and desktops).
+  appleWebApp: { capable: true, title: 'Dance', statusBarStyle: 'default' },
+  formatDetection: { telephone: false },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#F8E3EB',
+  // Use the whole screen, under the notch and the home bar too: the header, the phone tab bar
+  // and the page keep clear of them with the safe-area insets.
+  viewportFit: 'cover',
 }
 
 export default async function RootLayout({
@@ -43,13 +45,13 @@ export default async function RootLayout({
   }
 
   return (
-    <html
-      lang="en"
-      className={`${anton.variable} ${specialElite.variable} ${spaceGrotesk.variable} ${yellowtail.variable} h-full`}
-    >
-      <body className="min-h-full flex flex-col bg-paper text-ink">
+    <html lang="en" className={`${display.variable} ${sans.variable} h-full`}>
+      {/* The page colour is the screen's (app/globals.css, data-screen), so not set here. */}
+      <body className="min-h-full flex flex-col text-ink font-sans">
         <Navbar email={userEmail} />
-        <main className="flex-1">{children}</main>
+        {/* Room for the phone tab bar, which sits over the bottom of the page. */}
+        <main className={`flex-1 ${userEmail ? 'pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-0' : ''}`}>{children}</main>
+        <ServiceWorker />
       </body>
     </html>
   )
