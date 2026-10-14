@@ -33,7 +33,7 @@ correct form is worse for a dancer than no score at all. So the app stays where 
 I have big goals for this project! I'm currently building real-time live webcam coaching — pose tracking, rep detection, and spoken corrections while you dance in front of your camera. After that, I'll wrap it as a mobile app for the App Store and get it hosted online.
 
 ## Setup
-The app currently runs locally (a hosted version is coming by mid-August). It uses a Next.js frontend, a FastAPI backend, and Supabase for auth and storage — running it yourself requires your own free Supabase project.
+The app currently runs locally (a hosted version is coming by mid-October). It uses a Next.js frontend, a FastAPI backend, and Supabase for auth and storage — running it yourself requires your own free Supabase project.
 
 **Prerequisites:** Node.js, Python 3.10+, ffmpeg, and a Supabase project.
 
