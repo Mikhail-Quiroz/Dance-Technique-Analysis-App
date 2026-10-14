@@ -4,7 +4,7 @@
 This project analyzes dance videos and provides targeted feedback to dancers on how to improve their technique. As a dancer and teacher, I love to share my passion for dance. But at my dance studio, only certain kids can take private classes because they're so expensive. I wanted to create a tool that allowed any kid to receive the same one-on-one feedback that private classes provide, inspiring me to build it.
 
 ## How it works
-The app uses MediaPipe to track the dancer's body, letting the computer measure the angles their joints form throughout the video. It detects technique moves (jumps, leaps, and turns), scores each one against technique-based thresholds, and returns matching coaching corrections including what to fix, why it matters, and a drill to practice it. These critiques, alongside a compliment highlighting the dancer's strongest area, are shown around the MediaPipe-annotated video.
+The app uses MediaPipe to track the dancer's body, letting the computer measure the angles their joints form throughout the video. It detects technique moves (jumps, leaps, turns, kicks, and balances), scores each one against technique-based thresholds, and returns matching coaching corrections including what to fix, why it matters, and a drill to practice it. These critiques, alongside a compliment highlighting the dancer's strongest area, are shown around the MediaPipe-annotated video.
 
 ## What it does and does not critique
 The app critiques **technique-based movements** — turns, leaps, jumps, flips, arabesques, battements.
@@ -30,7 +30,7 @@ correct form is worse for a dancer than no score at all. So the app stays where 
 - **Video encoding:** ffmpeg
 
 ## Status
-I have big goals for this project! I'm currently building real-time live webcam coaching — pose tracking, rep detection, and spoken corrections while you dance in front of your camera. After that, I'll wrap it as a mobile app for the App Store and get it hosted online.
+I have big goals for this project! I've built real-time live webcam coaching — pose tracking, rep detection, and corrections while you dance in front of your camera. Next, I'll wrap it as a mobile app for the App Store and get it hosted online.
 
 ## Setup
 The app currently runs locally (a hosted version is coming by mid-October). It uses a Next.js frontend, a FastAPI backend, and Supabase for auth and storage — running it yourself requires your own free Supabase project.
