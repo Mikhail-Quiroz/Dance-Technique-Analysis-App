@@ -58,6 +58,7 @@ import {
   TimedRunningBodyScale,
   type Point,
 } from './geometry'
+import { JUMP_TYPE_CONFIG } from './jumpType'
 
 const NOSE = 0, L_EAR = 7, R_EAR = 8
 const L_SHOULDER = 11, R_SHOULDER = 12
@@ -69,6 +70,11 @@ const L_FOOT = 31, R_FOOT = 32
 
 // split_angle is still reported as a scored metric (see metric_to_cue -> bigger_split),
 // but it no longer decides leap vs jump — leapSeparationRatio does. See finalizeRep.
+
+/** Shoulder-mid to hip-mid in the image (normalized units), never 0. */
+const torsoLen = (lm: NormalizedLandmark[]) =>
+  Math.hypot((lm[L_SHOULDER].x + lm[R_SHOULDER].x) / 2 - (lm[L_HIP].x + lm[R_HIP].x) / 2,
+    (lm[L_SHOULDER].y + lm[R_SHOULDER].y) / 2 - (lm[L_HIP].y + lm[R_HIP].y) / 2) || 1e-6
 
 // Timestamps accumulate float error (a 30 fps step is 33.333... ms), so a duration
 // that should land exactly on a bound can come up a hair short. Every elapsed-time
@@ -923,8 +929,10 @@ export class JumpRepDetector {
     const floorThreshold = this.cfg.floorClearRatio * this.bodyScale.value
     const offFloor = flight.filter((f) => f.floorRise >= floorThreshold).length
     if (offFloor < this.cfg.minFloorClearFrames) {
+      // A rise with the feet down - the step or plié before a take-off - lands nowhere, so the
+      // take-off can follow at once: in the blind test a tilt jump left the floor 0.4 s after one.
       this.abortFlight('feet-on-floor')
-      this.enterRefractory(landingFrame.tMs)
+      this.enterRefractory(landingFrame.tMs, 0)
       return null
     }
 
@@ -933,12 +941,26 @@ export class JumpRepDetector {
     this.landingStartMs = landingFrame.tMs
     // land_plie's window starts at the last airborne frame (Python's landing_frame).
     this.landingWindow = [flight[flight.length - 1], landingFrame]
+    // A flight lower than any jump is a hop (jumpType): the step-hop or chassé into a leap, never
+    // counted or critiqued. It needs no landing window, and the leap it leads into can leave the
+    // floor 0.4 s after it lands (a firebird and a split leap in the blind test), so it closes now.
+    if (this.riseTorsoOf(flight) < JUMP_TYPE_CONFIG.minJumpRiseTorso) return this.finalizeRep()
     return null
   }
 
-  private enterRefractory(tMs: number): void {
+  /** Peak hip rise over the flight, in torso lengths at take-off: JumpRepEvent.riseTorso. */
+  private riseTorsoOf(flight: FrameSnapshot[]): number {
+    if (!Number.isFinite(this.bodyScale.value) || !flight.length) return 0
+    return Math.max(0, ...flight.map((f) => f.hipRise)) / torsoLen(flight[0].lm)
+  }
+
+  /**
+   * Refractory: the rebound out of a landing plié must not open another rep. A hop, or a flight
+   * that never really left the floor, has no such landing, so those pass 0.
+   */
+  private enterRefractory(tMs: number, ms = this.cfg.refractoryMs): void {
     this.phase = 'refractory'
-    this.refractoryUntilMs = tMs + this.cfg.refractoryMs
+    this.refractoryUntilMs = tMs + ms
     this.candidateBuffer = []
     this.flightBuffer = []
     this.landingWindow = []
@@ -962,9 +984,7 @@ export class JumpRepDetector {
     const landing = flight[flight.length - 1]
 
     const apexLm = apex.lm
-    const torsoOf = (lm: NormalizedLandmark[]) =>
-      Math.hypot((lm[L_SHOULDER].x + lm[R_SHOULDER].x) / 2 - (lm[L_HIP].x + lm[R_HIP].x) / 2,
-        (lm[L_SHOULDER].y + lm[R_SHOULDER].y) / 2 - (lm[L_HIP].y + lm[R_HIP].y) / 2) || 1e-6
+    const torsoOf = torsoLen
     const hipXOf = (lm: NormalizedLandmark[]) => (lm[L_HIP].x + lm[R_HIP].x) / 2
 
     // ---- Leap vs jump ----------------------------------------------------------
@@ -1676,7 +1696,7 @@ export class JumpRepDetector {
       travelTorso,
     }
 
-    this.enterRefractory(lastT)
+    this.enterRefractory(lastT, event.riseTorso < JUMP_TYPE_CONFIG.minJumpRiseTorso ? 0 : this.cfg.refractoryMs)
     return event
   }
 }

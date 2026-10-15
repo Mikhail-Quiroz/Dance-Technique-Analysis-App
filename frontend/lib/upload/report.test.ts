@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { loadFolder, replay } from '../live/replay'
-import { FOLDER_EXPECT, KNOWN } from '../live/realFootageExpect'
+import { FOLDER_EXPECT, KNOWN, expectedFor } from '../live/realFootageExpect'
 import { selectFeedback } from '../live/scoring'
 import type { MoveEvent } from '../live/moveEngine'
 import { buildReport, feedbackFor, formatTime, normalizeReport } from './report'
@@ -58,10 +58,11 @@ describe('upload report on real footage', () => {
       for (const clip of clips) {
         const { events } = replay(clip)
         const r = buildReport(events, clip.frames[clip.frames.length - 1].t)
-        const main = r.moves.filter((m) => m.move === ex.move)
+        const { move } = expectedFor(ex, clip.name)
+        const main = r.moves.filter((m) => m.move === move)
         expect(main.length, clip.name).toBeGreaterThan(0)
         for (const m of r.moves) expect(m.feedback, `${clip.name} ${m.label}`).toEqual(feedbackFor({ move: m.move!, metrics: m.metrics }))
-        if (ex.move === 'jump') expect(main[0].score, clip.name).toBeNull()
+        if (move === 'jump') expect(main[0].score, clip.name).toBeNull()
         else expect(r.overall_score, clip.name).not.toBeNull()
       }
     })

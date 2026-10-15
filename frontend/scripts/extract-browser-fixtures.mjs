@@ -1,4 +1,4 @@
-// Browser fixtures: every reference clip read by the browser's MediaPipe - the runtime /live and
+// Browser fixtures: every reference (and blind-test) clip read by the browser's MediaPipe - the runtime /live and
 // uploads run - at exactly the frame times of its Python fixture, in the same format 2, so
 // replay.ts loads them and the real-footage tests run on what users' browsers see.
 //
@@ -18,7 +18,10 @@ import puppeteer from 'puppeteer-core'
 
 const FRONTEND = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const FIXTURES = path.join(FRONTEND, 'lib/live/fixtures')
-const VIDEOS = path.resolve(FRONTEND, '../videos/reference')
+const VIDEOS = path.resolve(FRONTEND, '../videos')
+// Where a fixture folder's videos are, as scripts/extract_live_fixtures.py lays them out:
+// real/<move>/x <- videos/reference/<move>/x.mp4 ; real/blind/x <- videos/blind/x.mp4
+const videoDir = (folder) => path.join(VIDEOS, folder === 'blind' ? 'blind' : path.join('reference', folder))
 const SCALE = { lm: 1000, world: 1000, vis: 100 }
 const TYPES = { '.html': 'text/html', '.mjs': 'text/javascript', '.js': 'text/javascript', '.wasm': 'application/wasm', '.mp4': 'video/mp4', '.mov': 'video/quicktime' }
 
@@ -75,7 +78,10 @@ function route(url) {
   if (u.startsWith('/tasks-vision/')) return { file: path.join(FRONTEND, 'node_modules/@mediapipe/tasks-vision', u.slice(14)) }
   if (u.startsWith('/wasm/')) return { file: path.join(FRONTEND, 'public/mediapipe/wasm', u.slice(6)) }
   if (u === '/model.task') return { file: path.join(FRONTEND, 'public/models/pose_landmarker_lite.task') }
-  if (u.startsWith('/video/')) return { file: path.join(VIDEOS, u.slice(7)) }
+  if (u.startsWith('/video/')) {
+    const [folder, ...file] = u.slice(7).split('/')
+    return { file: path.join(videoDir(folder), ...file) }
+  }
   return null
 }
 
@@ -128,16 +134,17 @@ async function main() {
   if (!CHROME) throw new Error('Google Chrome not found: set CHROME_PATH')
   const server = serve()
   const port = server.address().port
-  const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, protocolTimeout: 1_800_000 })
+  // A blind-test video runs two minutes (3,700 frames), and each frame is a seek: allow 2 hours.
+  const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, protocolTimeout: 7_200_000 })
   const folders = only.length ? only : fs.readdirSync(path.join(FIXTURES, 'real'))
   const jobs = []
   for (const folder of folders) {
     for (const f of fs.readdirSync(path.join(FIXTURES, 'real', folder))) {
       if (!f.endsWith('.json.gz')) continue
       const name = f.slice(0, -'.json.gz'.length)
-      const video = ['.mp4', '.mov', '.MP4', '.MOV'].map((e) => name + e).find((v) => fs.existsSync(path.join(VIDEOS, folder, v)))
+      const video = ['.mp4', '.mov', '.MP4', '.MOV'].map((e) => name + e).find((v) => fs.existsSync(path.join(videoDir(folder), v)))
       if (video) jobs.push({ folder, name, video })
-      else console.log(`skip  ${folder}/${name}: no video under videos/reference`)
+      else console.log(`skip  ${folder}/${name}: no video for it under videos/`)
     }
   }
 

@@ -125,9 +125,10 @@ leg, deliberate mistakes). Needle is not done yet (the user will find clips).
   facing the camera -> `tiltJump` / `switchTilt`, head turned with a switch -> `switchArabesque`; then
   russian, switch, split.
 - **Kicks** (`kickDetector.ts`): a leg past 138 degrees on screen (arabesques peaked at 136). Facing
-  the camera: the foot crossing the center line is a **fan kick**, otherwise a **side battement**; a
-  leg behind in 3-D is not a kick. Side-on: a foot rising in front is a **front battement**; behind is
-  left to the arabesque detector. Kicks wait out turns and flights (`MoveEngine.release`), and a
+  the camera (since 2026-10-15): the foot sweeping well past the center line is a **fan kick**; one
+  that stays out but tops out near its own hip line, the leg rising forward in 3-D, is a **front
+  battement**; otherwise a **side battement**; a leg behind in 3-D is not a kick. Side-on: a foot
+  rising in front is a **front battement**; behind is left to the arabesque detector. Kicks wait out turns and flights (`MoveEngine.release`), and a
   kick inside a closed turn of 300+ degrees or a real leap is dropped. Critiques: height, straight
   knee (battements only: a fan kick's knee blurs), standing knee, and arm steadiness (both arms in
   second, from the front only, measured against the torso).
@@ -141,15 +142,16 @@ leg, deliberate mistakes). Needle is not done yet (the user will find clips).
   20 s for long sequences.
 - **Russian / calypso exit turn:** a turn starting within 1 s of the landing is not counted (the
   user's rule).
+- App text calls à la seconde turns **second turns**, spelled out (the user's choice, 2026-10-14: the audience is mostly competitive dancers, and "2nd" looks tacky), and the leg position "in second". The code keeps `seconde` in keys, metric names and cue IDs.
 - Kicks share the balances family since 2026-10-13: `hold` is "Balances & kicks" (the user's choice: one balance alone was too thin, and they preferred its green to the kicks' former violet). Kick moves keep the kick icon in the green badge (`MoveIcon`); `normalizeReport` reads a saved report's old `kick` family as `hold`.
 
 **What the webcam can't do** (so neither the app nor the answer key tries):
 - **Floaters** are told by the arms, not the plié: hip height per turn overlaps completely with
   regular second turns on a webcam (see "Floaters, knees and fan kicks" below). A floater danced with
   the arms down is a regular second turn to the app.
-- **Front battements need a side view** and **fan kicks a front view**: a kick toward the lens and
-  one to the side look alike from the front (3-D depth doesn't separate them), and a fan kick's
-  sweep across the body is hidden from the side.
+- **Fan kicks need a front view**: their sweep across the body is hidden from the side. From the
+  front, a front battement and a side battement are told apart by the leg's 3-D direction on the way
+  up, which a fast kick can skip in one frame; side-on they are certain.
 - **Switch arabesque vs. switch tilt** rests on the head direction and the filming angle.
 - **15 fps** loses many switches (the switch falls between frames).
 - Not critiqued: a fan kick's chest curl, hands touching the floor in an illusion, arm steadiness
@@ -172,9 +174,8 @@ shows (read as-is, HLG comes out washed out). Chrome on the user's laptop plays 
   whatever the depth says.
 - A kick must last `minKickMs` (100 ms; the shortest of 402 real kicks was 144): a 33 ms "kick" in a
   leap's run-up was a tracking glitch.
-- Front battements facing the camera (clips 9-14) read as fan kicks or side battements: the foot comes
-  up in front of the body, between where fan kicks cross and side battements stay out, and the
-  three overlap. Side-on, all 8 were right.
+- Front battements facing the camera (clips 9-14) read as fan kicks or side battements until
+  2026-10-15, when the front-on kick rules changed (see "Blind test" below). Side-on, all 8 were right.
 - A leap with one leg high and one low that also passes the straddle test is not a russian (a
   russian lifts both legs together): with the head turned and no switch seen it is `leapUnsure`,
   counted and never scored. Switch arabesque 4 read as a russian on every reader before.
@@ -187,10 +188,10 @@ shows (read as-is, HLG comes out washed out). Chrome on the user's laptop plays 
   (next section).
 
 Identification, native fps (python / browser-cpu / browser-gpu): fan kick 12/12/12 of 13 (the laptop
-clips: 6/5/7 of 10), front battement side-on 8/8/8 of 8 (facing the camera 0/6), switch arabesque
-6/6/6 of 8 (clip 4 is an unsure leap), floater test as seconde 5/6/6 of 6, changing spot 3/2/3 of 4.
-At 15 fps switch arabesques mostly fail (1-2 of 8). Switch tilt and pure à la seconde re-shoots were
-not filmed yet.
+clips: 6/5/7 of 10), front battement side-on 8/8/8 of 8 (facing the camera 0/6, 6/6 since
+2026-10-15), switch arabesque 6/6/6 of 8 (clip 4 is an unsure leap), floater test as seconde 5/6/6 of
+6, changing spot 3/2/3 of 4. At 15 fps switch arabesques mostly fail (1-2 of 8). The switch tilt and
+second turn re-shoots came on 2026-10-14 (next sections).
 
 ### Floaters, knees and fan kicks (2026-10-13)
 
@@ -199,7 +200,7 @@ not filmed yet.
   floater when both wrists are above the nose on 40%+ of its frames and its standing knee's 20th
   percentile on screen is 145+. Every regular and changing-spot turn on the reference footage had
   the arms up on 0-11% of frames; floater turns 46-100%. The sequence stays `seconde` with
-  `TurnEvent.floaters` (shown as "... à la seconde with floaters"); the count runs about one short
+  `TurnEvent.floaters` (shown as "... second turns with floaters"); the count runs about one short
   (the arms rise during the first floater), so it is not shown. Turns with the arms 20%+ up are left
   out of the changing-spot check: a floater has no spot pause, and two floater sequences read as
   changing spot before. Critique: `floater_support_knee` (median standing knee of the least straight
@@ -219,6 +220,75 @@ not filmed yet.
   share of its full reach (`fan_full_circle`, 0.85 / 0.40). Round fans 0.81-0.95 on the iPhone
   footage; right-leg fans that dropped straight down 0.18-0.33. Locked in by "real footage — fan
   kicks (iPhone)" and "switch arabesques (iPhone)" in `realFootage.test.ts`.
+
+### Blind test and upright iPhone footage (2026-10-14/15)
+
+The user filmed three blind videos (`videos/blind/`, ten moves each in an order they kept to themselves
+until the app had answered; `BLIND_KEY` in `realFootageExpect.ts`) and three folders on an iPhone held
+upright (1080x1920):
+- `High Quality - Second Turns`: 2+2, 3+2, 2+3, 3+3 and 4+2 on both sides.
+- `High Quality - Switch Tilt`: 14 leaps travelling across the narrow frame.
+- `High Quality - Fan Kick vs Front Battement`: both kicks facing the camera, keyed per clip with
+  `FolderExpectation.moves`.
+
+The blind videos are tone-mapped at full length, camera setup and all, as a user's upload would be.
+Both extractors read `videos/blind/` into `fixtures/<set>/blind/`. The browser extractor allows 2 h
+per page call, because a two-minute video is 3,700 seeks. The "blind test" block of
+`realFootage.test.ts` checks each video's moves against the key in order (longest common
+subsequence), allowing the shortfalls listed with their reasons in `BLIND_SCORE`.
+
+**Before any change (Python reader): 26 of 30 named in order, 4 moves invented.** What changed, with
+the numbers in the code comments:
+- **A hop's landing hid the leap after it.** A firebird was missed, and a split leap read as the
+  arabesque of its trailing leg.
+  - `JumpRepDetector` now closes a hop (a rise under `JUMP_TYPE_CONFIG.minJumpRiseTorso`) at once,
+    with no landing window or refractory, and a rise that never left the floor gets no refractory.
+  - A flight too short to count keeps the refractory: firebird 6 relies on it.
+  - `MoveEngine`'s "no arabesque just after a landing" ignores hops, which are now reported the
+    moment they land.
+- **Switches read where there were none.**
+  - A chassé's open step long before the take-off is not a brush unless a leg is kicked up on screen
+    (`switchEarlyBrushMs` / `switchEarlyBrushImageDeg`).
+  - The legs closing in the last 15% of the flight, into a narrower opening, are the landing
+    (`switchLateFrac` / `switchLateSplitShare`).
+  - Switch arabesque 9 had passed only on such a landing. It is now a known miss: its real brush
+    reads 44 degrees through the blur.
+- **A calypso's entry must be a real spin**, 100+ degrees a second on average (`minEntryTurnDegPerS`).
+  Calypsos' chaînés went 150-630; the slow turn to face the camera before switch tilt 4 went 57.
+- **An arabesque needs both legs clearly tracked**: every leg point at 0.75+ visibility, median over
+  the hold (`minLegVisibility`). Legs hidden behind furniture read 0.65; real arabesques 0.82+.
+- **Kicks from the front:**
+  - a fan kick sweeps past the midline: second-closest frame under -0.25, or (for 15 fps) one frame
+    under -0.5 in a sweep 1.5+ wide;
+  - otherwise a foot that tops out within 0.4 of its hip line, with the leg rising forward in 3-D,
+    is a front battement;
+  - otherwise a side battement.
+- **A clip that ends mid-turn:** `MoveEngine.flush` now closes a turn still going on the last frame
+  (second turns 5 and 7 ended 0.3 s after the last pirouette). It does so only for a turn named by
+  its shape: a chaîné or an unnamed spin there was the dancer turning to walk away.
+
+After (python / browser-cpu / browser-gpu):
+
+| Clips | Result |
+|---|---|
+| Blind test | 29+1 / 26+5 / 29+3 of 30 (named in order + invented) |
+| Second turns | 10/10/10, every count exact |
+| Fan kick vs front battement | 9/9/9 of 10 |
+| Front-facing front battements (HQ 9-14) | 6/6/6 |
+| Switch tilts | 9/8/8 of 14 |
+
+Switch tilts at 15 fps mostly fail. The misses:
+- **Switch tilts entering the frame:** the dancer comes into the upright frame just before taking off,
+  so the run-up and the brush are partly missed. Two others don't show the switch from the front.
+- **A split leap danced facing the camera with the chest open** reads as a russian: shoulders and
+  hips read square to the camera.
+- **Both blind illusions on the CPU reader:** the reference illusions pass there, and the old code
+  missed them too.
+- **A calypso that travels under 0.3 torso lengths** gets no critique: `legShape` needs the travel
+  direction.
+- **During the camera setup** (the dancer against the lens, the legs out of the picture), the browser
+  readers invented jumps and a side battement. The GPU reader also turned a left/right swap into a
+  300-degree turn.
 
 ### Live session summary and highlight reel
 

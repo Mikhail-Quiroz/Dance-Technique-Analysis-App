@@ -9,7 +9,7 @@
 // for a new folder, adding it to FOLDER_EXPECT.
 import { beforeEach, describe, expect, it } from 'vitest'
 import { FIXTURE_SETS, decimate, loadFolder, replay, truncate, type Fixture, type FixtureSet } from './replay'
-import { FOLDER_EXPECT, KNOWN, clipNumber, type FolderExpectation } from './realFootageExpect'
+import { BLIND_KEY, BLIND_SCORE, FOLDER_EXPECT, KNOWN, clipNumber, expectedFor, type FolderExpectation } from './realFootageExpect'
 import type { MoveEvent } from './moveEngine'
 import { angleAt3 } from './geometry'
 import { scoreMetric, selectFeedback } from './scoring'
@@ -66,7 +66,7 @@ for (const [set, root] of Object.entries(FIXTURE_SETS) as Array<[FixtureSet, str
       for (const clip of clips) {
         const known = KNOWN[`${set} ${folder}/${clip.name}`]
         ;(known ? it.fails : it)(`${clip.name}: identified, counted, nothing else${known ? ` (known miss: ${known})` : ''}`, () => {
-          expect(problems(ex, clip.name, replay(clip).events, 0)).toEqual([])
+          expect(problems(expectedFor(ex, clip.name), clip.name, replay(clip).events, 0)).toEqual([])
         })
       }
 
@@ -77,7 +77,7 @@ for (const [set, root] of Object.entries(FIXTURE_SETS) as Array<[FixtureSet, str
         const known = KNOWN[`${set} ${folder}/${clip.name} @15fps`]
         ;(known ? it.fails : it)(`${clip.name} at 15 fps${known ? ` (known miss: ${known})` : ''}`, () => {
           const half = decimate(clip, 2)
-          expect(problems(ex, half.name, replay(half).events, 1)).toEqual([])
+          expect(problems(expectedFor(ex, half.name), half.name, replay(half).events, 1)).toEqual([])
         })
       }
 
@@ -88,13 +88,41 @@ for (const [set, root] of Object.entries(FIXTURE_SETS) as Array<[FixtureSet, str
       if (set === 'python') {
         const found = clips.filter((c) => !KNOWN[`python ${folder}/${c.name}`])
         it.each(found.map((c) => [c.name, c] as [string, Fixture]))('%s trimmed 0.6 s after the move', (_n, clip) => {
-          const main = replay(clip).events.find((e) => e.move === ex.move)!
+          const { move } = expectedFor(ex, clip.name)
+          const main = replay(clip).events.find((e) => e.move === move)!
           const cut = truncate(clip, main.endMs + 600)
-          expect(replay(cut).events.filter((e) => e.move === ex.move).length, cut.name).toBe(1)
+          expect(replay(cut).events.filter((e) => e.move === move).length, cut.name).toBe(1)
         })
       }
     })
   }
+}
+
+// The blind test: each video's moves against the key, in order. Longest common subsequence: the moves
+// the app named in the order they were danced, and whatever it added besides.
+function inOrder(key: readonly string[], got: readonly string[]): number {
+  const dp = Array.from({ length: key.length + 1 }, () => new Array<number>(got.length + 1).fill(0))
+  for (let i = 1; i <= key.length; i++) {
+    for (let j = 1; j <= got.length; j++) {
+      dp[i][j] = key[i - 1] === got[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1])
+    }
+  }
+  return dp[key.length][got.length]
+}
+
+for (const [set, root] of Object.entries(FIXTURE_SETS) as Array<[FixtureSet, string]>) {
+  const videos = loadFolder('blind', root)
+  describe.skipIf(videos.length === 0)(`blind test (${set})`, () => {
+    for (const fx of videos) {
+      const key = BLIND_KEY[fx.name]
+      const want = BLIND_SCORE[`${set} ${fx.name}`] ?? { named: key.length, extra: 0, why: '' }
+      it(`${fx.name}: ${want.named} of ${key.length} named in order, ${want.extra} added${want.why ? ` (${want.why})` : ''}`, () => {
+        const got = replay(fx).events.map((e) => e.move)
+        const named = inOrder(key, got)
+        expect({ named, extra: got.length - named }, got.join(', ')).toEqual({ named: want.named, extra: want.extra })
+      })
+    }
+  })
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -110,7 +138,7 @@ const eventsOf = (folder: string, clip: Fixture): MoveEvent[] => {
 }
 const mainEvent = (folder: string, n: number): MoveEvent => {
   const clip = loadFolder(folder).find((c) => clipNumber(c.name) === n)!
-  return eventsOf(folder, clip).find((e) => e.move === FOLDER_EXPECT[folder].move)!
+  return eventsOf(folder, clip).find((e) => e.move === expectedFor(FOLDER_EXPECT[folder], clip.name).move)!
 }
 const cues = (ev: MoveEvent): string[] => {
   const fb = selectFeedback(ev.metrics)
@@ -347,9 +375,11 @@ describe('real footage — a phone held upright sees the same moves', () => {
   })
   // One test per folder: all of them in one ran past the 30 s limit once the iPhone clips came in.
   // The crops are in 1280x720 units, which suits any 16:9 fixture (the 1080p iPhone clips too).
+  // Clips filmed upright already are what this simulates, so they are left out.
+  const landscape16x9 = (fx: Fixture) => !fx.size || Math.abs(fx.size[0] / fx.size[1] - 16 / 9) < 0.01
   for (const [set, root] of Object.entries(FIXTURE_SETS) as Array<[FixtureSet, string]>) {
     for (const folder of Object.keys(FOLDER_EXPECT)) {
-      const clips = loadFolder(folder, root)
+      const clips = loadFolder(folder, root).filter(landscape16x9)
       it.skipIf(clips.length === 0)(`${set} ${folder}: 3:4 and 9:16 crops, centred or off to one side`, () => {
         for (const fx of clips) {
           const landscape = verdicts({ ...fx, size: [1280, 720] })

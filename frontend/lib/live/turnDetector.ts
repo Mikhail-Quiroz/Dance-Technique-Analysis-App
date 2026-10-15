@@ -340,6 +340,8 @@ export interface TurnDebugState {
   phase: TurnPhase
   omegaDegPerS: number
   rotationDeg: number
+  /** When the sequence under way started (NaN when none is). */
+  startMs: number
   spinFrames: number
   lastReject: TurnRejectReason
   reps: number
@@ -762,6 +764,7 @@ export class TurnDetector {
       phase: this.phase,
       omegaDegPerS: this.dbgOmega,
       rotationDeg: this.phase === 'spinning' ? Math.abs(last - this.turnStartTheta) : 0,
+      startMs: this.phase === 'spinning' && this.turn.length ? this.turn[0].tMs : NaN,
       spinFrames: this.turn.length,
       lastReject: this.dbgReject,
       reps: this.repCount,

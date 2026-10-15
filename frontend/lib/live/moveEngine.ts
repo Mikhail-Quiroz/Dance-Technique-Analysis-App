@@ -155,7 +155,7 @@ export class MoveEngine {
   private flights: Flight[] = []
   private takeoffMs: number | null = null
   private turnActiveAtTakeoff = false
-  private takeoffCtx: JumpContext = { entryTurnDeg: 0, entryTurnGapMs: Infinity }
+  private takeoffCtx: JumpContext = { entryTurnDeg: 0, entryTurnGapMs: Infinity, entryTurnDegPerS: 0 }
   /** Every turn sequence the detector closed recently, before arbitration: [start, end, rotation]. */
   private closedTurns: Array<{ startMs: number; endMs: number; rotationDeg: number }> = []
   private lastTurnEndMs = -Infinity
@@ -213,12 +213,14 @@ export class MoveEngine {
       this.takeoffMs = tMs
       this.turnActiveAtTakeoff = this.turn.isActive()
       // The turn the dancer is in, or has just come out of, at take-off: a calypso's entry.
-      const active = this.turn.isActive() ? this.turn.debug.rotationDeg : 0
+      const td = this.turn.debug
+      const active = this.turn.isActive() ? td.rotationDeg : 0
       const recent = this.closedTurns.filter((c) => tMs - c.endMs <= 1500)
       const best = recent.reduce((b, c) => (c.rotationDeg > b.rotationDeg ? c : b), { startMs: 0, endMs: -Infinity, rotationDeg: 0 })
+      const perS = (deg: number, ms: number) => (deg > 0 ? deg / Math.max(ms / 1000, 1e-3) : 0)
       this.takeoffCtx = active >= best.rotationDeg
-        ? { entryTurnDeg: active, entryTurnGapMs: active > 0 ? 0 : Infinity }
-        : { entryTurnDeg: best.rotationDeg, entryTurnGapMs: tMs - best.endMs }
+        ? { entryTurnDeg: active, entryTurnGapMs: active > 0 ? 0 : Infinity, entryTurnDegPerS: perS(active, tMs - td.startMs) }
+        : { entryTurnDeg: best.rotationDeg, entryTurnGapMs: tMs - best.endMs, entryTurnDegPerS: perS(best.rotationDeg, best.endMs - best.startMs) }
     }
     if (j) this.handleJump(j, tMs, out)
 
@@ -235,16 +237,18 @@ export class MoveEngine {
 
     // ---- turns ---------------------------------------------------------------------------------
     const r = this.turn.pushFrame(lm, tMs, world)
-    if (r) {
-      this.closedTurns.push({ startMs: r.startMs, endMs: r.endMs, rotationDeg: r.rotations * 360 })
-      if (this.closedTurns.length > 6) this.closedTurns.shift()
-      this.lastTurnEndMs = r.endMs
-      this.pending.push({ kind: 'turn', releaseAt: tMs + (r.kind === 'chaine' ? this.cfg.chaineHoldMs : 0), ev: turnToMove(r, tMs) })
-    }
+    if (r) this.addTurn(r, tMs)
     if (ill) this.handleIllusion(ill, tMs, out)
 
     this.release(tMs, out)
     return out
+  }
+
+  private addTurn(r: TurnEvent, tMs: number): void {
+    this.closedTurns.push({ startMs: r.startMs, endMs: r.endMs, rotationDeg: r.rotations * 360 })
+    if (this.closedTurns.length > 6) this.closedTurns.shift()
+    this.lastTurnEndMs = r.endMs
+    this.pending.push({ kind: 'turn', releaseAt: tMs + (r.kind === 'chaine' ? this.cfg.chaineHoldMs : 0), ev: turnToMove(r, tMs) })
   }
 
   /**
@@ -258,6 +262,12 @@ export class MoveEngine {
     const out: MoveEvent[] = []
     const k = this.kick.flush()
     if (k) this.handleKick(k, tMs)
+    // A turn still going on the last frame ends there: two clips of second turns on the upright
+    // iPhone footage stopped 0.3 s after the last pirouette, before the spin had wound down. Only a
+    // turn the detector could name by its shape, though: a chaîné or an unnamed spin cut off by the
+    // end of a clip was the dancer turning to walk away (410 degrees after a switch arabesque).
+    const r = this.turn.interrupt(tMs)
+    if (r && r.kind !== 'chaine' && r.kind !== 'turn') this.addTurn(r, tMs)
     const ill = this.illusion.flush()
     if (ill) this.handleIllusion(ill, tMs, out)
     for (const p of this.pending) p.releaseAt = -Infinity
@@ -274,7 +284,7 @@ export class MoveEngine {
     const inTurn = this.turnActiveAtTakeoff && j.riseTorso < this.cfg.inTurnLeapMinRiseTorso
     this.takeoffMs = null
     this.turnActiveAtTakeoff = false
-    this.takeoffCtx = { entryTurnDeg: 0, entryTurnGapMs: Infinity }
+    this.takeoffCtx = { entryTurnDeg: 0, entryTurnGapMs: Infinity, entryTurnDegPerS: 0 }
     if (inTurn) {
       this.flights.push({ takeoffMs: j.takeoffMs, landingMs: j.landingMs, move: 'in-turn hop' })
       this.drop(tMs, `hop inside a turn (rise ${j.riseTorso.toFixed(2)}, ${j.airborneMs.toFixed(0)} ms)`)
@@ -306,13 +316,15 @@ export class MoveEngine {
       endMs: j.landingMs,
       detail: `${Math.round(j.airborneMs)} ms airtime`,
       metrics: move === 'jump' ? {} : jumpMetrics(move, j),
-      log: `${move}: ${verdict.reason} [entry turn ${ctx.entryTurnDeg.toFixed(0)}deg, gap ${Number.isFinite(ctx.entryTurnGapMs) ? ctx.entryTurnGapMs.toFixed(0) : '-'} ms] (rise ${j.riseTorso.toFixed(2)}, ${j.airborneMs.toFixed(0)} ms, travel ${j.travelTorso.toFixed(2)}) spins[${this.turn.recentSpins.map((sp) => `${sp.rotationDeg.toFixed(0)}deg ${fmtT(sp.startMs)}-${fmtT(sp.endMs)}`).join('; ')}] takeoff ${fmtT(j.takeoffMs)} trace[${j.trace.map((x) => `${x.phase[0]}${Math.round(x.legAngleImage)}/${Math.round(x.legAngleWorld)}`).join(' ')}]`,
+      log: `${move}: ${verdict.reason} [entry turn ${ctx.entryTurnDeg.toFixed(0)}deg at ${ctx.entryTurnDegPerS.toFixed(0)}deg/s, gap ${Number.isFinite(ctx.entryTurnGapMs) ? ctx.entryTurnGapMs.toFixed(0) : '-'} ms] (rise ${j.riseTorso.toFixed(2)}, ${j.airborneMs.toFixed(0)} ms, travel ${j.travelTorso.toFixed(2)}) spins[${this.turn.recentSpins.map((sp) => `${sp.rotationDeg.toFixed(0)}deg ${fmtT(sp.startMs)}-${fmtT(sp.endMs)}`).join('; ')}] takeoff ${fmtT(j.takeoffMs)} trace[${j.trace.map((x) => `${x.phase[0]}${Math.round(x.legAngleImage)}/${Math.round(x.legAngleWorld)}`).join(' ')}]`,
       source: { jump: j, jumpVerdict: verdict },
     })
   }
 
   private handleArabesque(a: ArabesqueEvent, tMs: number): void {
-    const lastLanding = this.flights.length ? this.flights[this.flights.length - 1].landingMs : -Infinity
+    // The leg trailing out of a leap: a hop leaves none, and is reported the moment it lands.
+    const leaps = this.flights.filter((f) => f.move !== 'hop' && f.move !== 'in-turn hop')
+    const lastLanding = leaps.length ? leaps[leaps.length - 1].landingMs : -Infinity
     const veto = this.inFlight() ? 'during a flight'
       : tMs - lastLanding < this.cfg.arabesqueAfterLandingMs ? 'just after a landing'
       : this.turn.isActive(this.cfg.vetoTurnMinDeg) ? 'during a turn'
@@ -488,7 +500,7 @@ function turnToMove(r: TurnEvent, tMs: number): MoveEvent {
     : 'turnUnsure'
   const count = r.kind === 'pique' ? (r.turns ?? r.rotations) : r.kind === 'seconde' ? (r.secondeTurns ?? r.rotations) : r.rotations
   const detail = r.kind === 'seconde'
-    ? `${r.secondeTurns} à la seconde${r.floaters ? ' with floaters' : ''}${r.finishTurns ? ` + ${r.finishTurns} pirouette` : ''}`
+    ? `${count} second turn${count === 1 ? '' : 's'}${r.floaters ? ' with floaters' : ''}${r.finishTurns ? ` + ${r.finishTurns} pirouette${r.finishTurns === 1 ? '' : 's'}` : ''}`
     : r.kind === 'pique' ? `${count} piqué turn${count === 1 ? '' : 's'}`
     : `${count} rotation${count === 1 ? '' : 's'}`
   return {

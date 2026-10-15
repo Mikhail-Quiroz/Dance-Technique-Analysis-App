@@ -47,8 +47,31 @@ export interface KickDetectorConfig {
   minUprightTorso: number
   /** Facing the camera at or above this shoulder width (over torso length): filmed from the front. */
   frontOnFacing: number
-  /** From the front: a foot that comes within this of the midline (or past it) crossed - a fan kick. */
+  /**
+   * From the front: a foot that sweeps this far past the midline crossed - a fan kick. Every fan
+   * kick the app named on the reference footage came to -0.35 or further (second-closest frame);
+   * front battements aimed at the camera reached the midline but no further than -0.14.
+   */
   fanCrossTorso: number
+  /**
+   * ...or past this on one frame only, in a sweep at least fanSweepRangeTorso wide (how far the foot
+   * moved across over the kick): at 15 fps a fan kick's crossing may get a single frame - one swept 2.8
+   * torso lengths with one frame at -1.19, another 1.7 with one at -0.63. Front battements reached
+   * -0.22 at the most and side battements -0.42.
+   */
+  fanSweepCrossTorso: number
+  fanSweepRangeTorso: number
+  /**
+   * From the front, a kick that did not cross is a front battement when its foot at the top stays
+   * within this of the hip line (front battements 0.08-0.35, side battements 0.25-1.06)...
+   */
+  frontTopOwnTorso: number
+  /**
+   * ...unless the leg rose sideways: the 3-D share of its direction pointing forward, between 45 and
+   * 135 degrees, under this (side battements 0.03-0.48; front battements 0.47-1.00 where a frame
+   * caught the leg on the way up - a fast one goes from 45 to 135 degrees between two frames).
+   */
+  frontRiseWorldShare: number
   /** From the side: the foot this far toward the face (torso lengths) is in front. */
   sideOnForwardTorso: number
   /** From the front, a leg this far behind in 3-D (share of its horizontal direction) is an arabesque... */
@@ -84,7 +107,11 @@ export const DEFAULT_KICK_CONFIG: KickDetectorConfig = {
   minKickMs: 100,
   minUprightTorso: 0.5,
   frontOnFacing: 0.45,
-  fanCrossTorso: 0.15,
+  fanCrossTorso: -0.25,
+  fanSweepCrossTorso: -0.5,
+  fanSweepRangeTorso: 1.5,
+  frontTopOwnTorso: 0.4,
+  frontRiseWorldShare: 0.4,
   sideOnForwardTorso: 0.2,
   behindWorldShare: -0.3,
   fanSureCrossTorso: -0.3,
@@ -311,18 +338,28 @@ export class KickDetector {
     // The foot's closest approach to the far side, on two frames at least: one frame is a glitch.
     const owns = fr.map((f) => f.own).sort((a, b) => a - b)
     const crossed = owns.length >= 2 ? owns[1] : owns[0]
+    const swept = owns[0] < c.fanSweepCrossTorso && owns[owns.length - 1] - owns[0] >= c.fanSweepRangeTorso
     const forward = med(fr.filter((f) => f.el >= 60).map((f) => f.forward))
     const worldForward = med(top.map((f) => f.worldForward))
 
     let kind: KickKind | null
     let why: string
     if (facing >= c.frontOnFacing) {
-      if (crossed >= c.fanSureCrossTorso && Number.isFinite(worldForward) && worldForward <= c.behindWorldShare) {
+      if (!swept && crossed >= c.fanSureCrossTorso && Number.isFinite(worldForward) && worldForward <= c.behindWorldShare) {
         kind = null
         why = `from the front, the leg went behind (${worldForward.toFixed(2)})`
+      } else if (crossed < c.fanCrossTorso || swept) {
+        kind = 'fanKick'
+        why = `from the front (facing ${facing.toFixed(2)}), foot crossed (${crossed.toFixed(2)}${swept ? `, one frame ${owns[0].toFixed(2)}` : ''}), world forward ${worldForward.toFixed(2)}`
       } else {
-        kind = crossed < c.fanCrossTorso ? 'fanKick' : 'sideBattement'
-        why = `from the front (facing ${facing.toFixed(2)}), foot ${crossed < c.fanCrossTorso ? 'crossed' : 'stayed out'} (${crossed.toFixed(2)}), world forward ${worldForward.toFixed(2)}`
+        // Up in front of its own hip, the leg aimed forward on the way up: a front battement toward
+        // the camera. Out to the side at the top, or rising sideways: a side battement.
+        const ownTop = med(top.map((f) => f.own))
+        const rise = fr.filter((f) => f.el >= 45 && f.el <= 135)
+        const riseForward = med(rise.map((f) => f.worldForward))
+        const front = ownTop < c.frontTopOwnTorso && !(rise.length > 1 && riseForward < c.frontRiseWorldShare)
+        kind = front ? 'frontBattement' : 'sideBattement'
+        why = `from the front (facing ${facing.toFixed(2)}), foot stayed out (${crossed.toFixed(2)}), at the top ${ownTop.toFixed(2)} from the hip line, rising ${riseForward.toFixed(2)} forward`
       }
     } else if (forward >= c.sideOnForwardTorso) {
       kind = 'frontBattement'

@@ -29,7 +29,7 @@ const SHORT: Record<MoveKind, string> = {
   fanKick: 'Fan',
   illusion: 'Illusion',
   pirouette: 'Pirouette',
-  seconde: 'À la 2nde',
+  seconde: 'Second',
   changingSpot: 'Ch. spot',
   chaine: 'Chaînés',
   pique: 'Piqués',
@@ -101,7 +101,7 @@ export default function Results({
             <h2 className="font-display text-2xl font-extrabold">I couldn&rsquo;t spot a move I know</h2>
             <p className="text-muted">
               I coach split, switch, calypso, russian, firebird, tilt, switch tilt and switch arabesque leaps;
-              pirouettes, à la seconde, changing-spot, chaîné and piqué turns; front and side battements, fan
+              pirouettes, second turns, changing-spot second turns, chaîné and piqué turns; front and side battements, fan
               kicks and illusions; arabesques and straight jumps. Check that your whole body stays in frame, head to toe,
               and that the clip keeps going for a second after your last move.
             </p>

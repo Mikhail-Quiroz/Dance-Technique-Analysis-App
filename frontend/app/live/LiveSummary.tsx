@@ -146,7 +146,7 @@ export default function LiveSummary({ data, onDone }: { data: LiveSessionData; o
           <h2 className="font-display text-2xl font-extrabold">No moves counted this time</h2>
           <p className="text-muted">
             I count split, switch, calypso, russian, firebird, tilt, switch tilt and switch arabesque leaps;
-            pirouettes, à la seconde, changing-spot, chaîné and piqué turns; front and side battements, fan
+            pirouettes, second turns, changing-spot second turns, chaîné and piqué turns; front and side battements, fan
             kicks and illusions; arabesques and straight jumps, with your whole body in frame, head to toe.
           </p>
           <button onClick={onDone} className="btn btn-sun">

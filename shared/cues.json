@@ -46,13 +46,13 @@
   },
   "maintain_seconde_height": {
     "cue": "Keep your working leg at hip height — don't let it drop as you turn.",
-    "why": "The à la seconde position must be maintained throughout the turn; a dropping leg shifts your center of mass sideways and collapses the line of the turn.",
-    "drill": "Standing à la seconde holds at the barre: lift the working leg to 90° and hold for 5 s, focusing on the hip flexor maintaining height. 10 reps each side."
+    "why": "The leg must stay in second throughout the turn; a dropping leg shifts your center of mass sideways and collapses the line of the turn.",
+    "drill": "Standing holds in second at the barre: lift the working leg to 90° and hold for 5 s, focusing on the hip flexor maintaining height. 10 reps each side."
   },
   "extend_seconde_leg": {
-    "cue": "Fully straighten your working leg in à la seconde — knee and foot completely extended.",
-    "why": "A bent working knee shortens the line and makes the à la seconde position look incomplete. The leg should reach away from you through a pointed toe.",
-    "drill": "Slow développé à la seconde at the barre: unfold the leg with control, finishing with a straight knee and fully pointed foot. 10 reps each side."
+    "cue": "Fully straighten your working leg in second — knee and foot completely extended.",
+    "why": "A bent working knee shortens the line and makes the leg in second look incomplete. The leg should reach away from you through a pointed toe.",
+    "drill": "Slow développé to second at the barre: unfold the leg with control, finishing with a straight knee and fully pointed foot. 10 reps each side."
   },
   "lift_arabesque_leg": {
     "cue": "Press your arabesque leg higher — imagine your heel is being pulled toward the ceiling.",
@@ -110,9 +110,9 @@
     "drill": "Seated straddle holds (30 s × 5) and standing leg swings (front to side, 20 each side)."
   },
   "whip_working_leg": {
-    "cue": "Whip the working leg out to à la seconde and snap it back to passé on every rotation.",
+    "cue": "Whip the working leg out to second and snap it back to passé on every rotation.",
     "why": "The fouetté works by the working leg's angular momentum being transferred to the body — a half-hearted whip kills the rotation.",
-    "drill": "Mark fouettés slowly: extend fully to à la seconde (pause), snap back to passé (pause). Speed up over 8 reps."
+    "drill": "Mark fouettés slowly: extend fully to second (pause), snap back to passé (pause). Speed up over 8 reps."
   },
   "maintain_tilt_line": {
     "cue": "Keep the tilt angle consistent — don't let your hips drop or your leg sag.",
@@ -236,7 +236,7 @@
   },
   "turn_not_pirouette": {
     "cue": "Turn — type unsure. I couldn't see a passé, so I'm not giving a critique for this one.",
-    "why": "Pirouette feedback needs the working toe up at the supporting knee. Without it, this could be a chaîné, an à la seconde turn or a spin on two feet, and each has a different correct shape.",
+    "why": "Pirouette feedback needs the working toe up at the supporting knee. Without it, this could be a chaîné, a second turn or a spin on two feet, and each has a different correct shape.",
     "drill": "For pirouette feedback, bring your working toe up to your supporting knee as you turn."
   },
   "straighten_arabesque_leg": {
@@ -292,7 +292,7 @@
   "seconde_stay_in_place": {
     "cue": "Stay on the spot — keep your supporting foot anchored instead of traveling.",
     "why": "If the supporting foot drifts, every turn starts from a new place and the series wanders off balance. The rotation should happen around one fixed point.",
-    "drill": "Mark a spot on the floor under your supporting foot and do two à la seconde turns; check the foot is still on the mark before adding more."
+    "drill": "Mark a spot on the floor under your supporting foot and do two second turns; check the foot is still on the mark before adding more."
   },
   "chaine_feet_together": {
     "cue": "Bring your feet together on every half-turn — don't let them drift apart.",

@@ -185,6 +185,12 @@ export interface ArabesqueDetectorConfig {
   refractoryMs: number
   minWarmupSamples: number
   visThresh: number
+  /**
+   * Over the hold, every leg point (knees, ankles, heels, toes) must be tracked at least this
+   * surely (median of each frame's least visible one). Real arabesques read 0.82 or more; legs
+   * hidden behind furniture, which the tracker still drew as a leg raised, read 0.65.
+   */
+  minLegVisibility: number
   trackingGapMs: number
 }
 
@@ -231,6 +237,7 @@ export const DEFAULT_ARABESQUE_CONFIG: ArabesqueDetectorConfig = {
   refractoryMs: 500,
   minWarmupSamples: 15,
   visThresh: 0.5,
+  minLegVisibility: 0.75,
   trackingGapMs: 400,
 }
 
@@ -287,6 +294,7 @@ export type ArabesqueRejectReason =
   | 'working-knee-folded'
   | 'support-in-plie'
   | 'legs-not-visible'
+  | 'legs-unclear'
   | 'too-short'
   | 'brief-and-low'
   | 'unconfirmed'
@@ -887,6 +895,15 @@ export class ArabesqueDetector {
     const plateau = plateauOf(held, this.cfg.plateauToleranceDeg)
     const top = plateau.frames.length ? plateau.frames : held
     const working = this.working ?? 'L'
+
+    // A leg the tracker had to guess: hidden behind furniture, it still draws one, raised.
+    const LEG_POINTS = [L_KNEE, R_KNEE, L_ANKLE, R_ANKLE, L_HEEL, R_HEEL, L_FOOT, R_FOOT]
+    const legVis = medianOf(held.map((f) => Math.min(...LEG_POINTS.map((id) => f.lm[id]?.visibility ?? 0))))
+    if (legVis !== null && legVis < this.cfg.minLegVisibility) {
+      this.noteAttempt('legs-unclear', latest.tMs)
+      this.abort('legs-unclear')
+      return null
+    }
 
     // A leg behind with the knee folded is an attitude, or a heel kicking up mid-run.
     const [wHip, wKnee, wAnkle] = working === 'L' ? [L_HIP, L_KNEE, L_ANKLE] : [R_HIP, R_KNEE, R_ANKLE]

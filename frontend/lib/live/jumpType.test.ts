@@ -103,7 +103,7 @@ describe('classifyJump — which leap', () => {
   })
 
   it('a leap out of a turn is a calypso - however its legs looked', () => {
-    const ctx = { entryTurnDeg: 320, entryTurnGapMs: 0 }
+    const ctx = { entryTurnDeg: 320, entryTurnGapMs: 0, entryTurnDegPerS: 640 }
     expect(hasEntryTurn(ctx)).toBe(true)
     expect(classifyJump(leap(straddle_), [], ctx).kind).toBe('calypso')
     expect(classifyJump(leap(splitLeap), [], ctx).kind).toBe('calypso')
@@ -111,12 +111,17 @@ describe('classifyJump — which leap', () => {
 
   it('a "turn" of a few tens of degrees before take-off is not a calypso entry', () => {
     // Real switch leaps and russians showed 13-71 degrees here: the shoulders seen edge-on.
-    expect(hasEntryTurn({ entryTurnDeg: 70, entryTurnGapMs: 0 })).toBe(false)
-    expect(classifyJump(leap(switchLeap), [], { entryTurnDeg: 70, entryTurnGapMs: 0 }).kind).toBe('switch')
+    expect(hasEntryTurn({ entryTurnDeg: 70, entryTurnGapMs: 0, entryTurnDegPerS: 200 })).toBe(false)
+    expect(classifyJump(leap(switchLeap), [], { entryTurnDeg: 70, entryTurnGapMs: 0, entryTurnDegPerS: 200 }).kind).toBe('switch')
+  })
+
+  it('a slow turn to face the front before take-off is not a calypso entry', () => {
+    // A switch tilt's approach turned 170 degrees at 57 a second; calypsos' chaînés went 150-630.
+    expect(hasEntryTurn({ entryTurnDeg: 170, entryTurnGapMs: 0, entryTurnDegPerS: 57 })).toBe(false)
   })
 
   it('a turn that ended long before take-off is not a calypso entry', () => {
-    expect(hasEntryTurn({ entryTurnDeg: 400, entryTurnGapMs: 1500 })).toBe(false)
+    expect(hasEntryTurn({ entryTurnDeg: 400, entryTurnGapMs: 1500, entryTurnDegPerS: 640 })).toBe(false)
   })
 
   it('legs apart but barely off the floor is a hop, not a leap', () => {

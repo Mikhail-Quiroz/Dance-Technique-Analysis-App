@@ -50,6 +50,11 @@ export const JUMP_TYPE_CONFIG = {
    * signal lags), switch leaps 13-71, russians 0-27.
    */
   minEntryTurnDeg: 150,
+  /**
+   * ...turning at least this fast on average: the calypsos' chaînés went 150-630 degrees a second;
+   * the slow turn to face the camera before a switch tilt, 57.
+   */
+  minEntryTurnDegPerS: 100,
 
   // ---- russian ----------------------------------------------------------------------------
   /** A straddle frame: legs at least this far apart... */
@@ -80,6 +85,22 @@ export const JUMP_TYPE_CONFIG = {
    * against a 35-degree close) had decided it.
    */
   switchPreTakeoffMs: 150,
+  /**
+   * A brush this long before the take-off must be a kick on screen, one leg at least
+   * switchEarlyBrushImageDeg up in the image. Early brushes on the reference footage (190-340 ms)
+   * read 57-73 degrees there; the open step of a chassé 300 ms before a split leap read 36, and made
+   * the leap a switch (blind test). Brushes nearer the take-off read as low as 36 and stay as they are.
+   */
+  switchEarlyBrushMs: 150,
+  switchEarlyBrushImageDeg: 45,
+  /**
+   * The legs closing late in the flight (after this share of it) into an opening narrower than the
+   * widest before it (under this share) are closing to land, not switching: a tilt jump read as a
+   * switch tilt that way, closing at 93% of the flight and opening to 67% (blind test). The latest
+   * switch on the reference footage passed at 80% of the flight.
+   */
+  switchLateFrac: 0.85,
+  switchLateSplitShare: 0.8,
 
   // ---- firebird ---------------------------------------------------------------------------
   /**
@@ -191,13 +212,18 @@ export function russianEvidence(trace: FlightSample[]): { ok: boolean; wideMs: n
 export function switchEvidence(trace: FlightSample[]): { ok: boolean; brush: number; low: number; split: number; lowMs: number } {
   const c = JUMP_TYPE_CONFIG
   const s = trace.filter((x) => x.phase !== 'post')
-  const takeoffMs = s.find((x) => x.phase === 'air')?.tMs ?? Infinity
+  const air = s.filter((x) => x.phase === 'air')
+  const takeoffMs = air[0]?.tMs ?? Infinity
+  const flightMs = air.length ? air[air.length - 1].tMs - takeoffMs : 0
   const passing = (x: FlightSample) => x.phase === 'air' || takeoffMs - x.tMs <= c.switchPreTakeoffMs
   let best = { ok: false, brush: 0, low: 180, split: 0, lowMs: NaN }
   for (let i = 0; i < s.length; i++) {
     const brush = maxAngle(s[i])
     if (brush < c.switchBrushDeg) continue
     if (!(Math.max(nz(s[i].elevL), nz(s[i].elevR)) >= c.switchBrushElevDeg)) continue
+    // Long before the take-off, legs apart are a step unless one is kicked up on screen too.
+    if (takeoffMs - s[i].tMs >= c.switchEarlyBrushMs &&
+        Math.max(nz(s[i].elevImgL), nz(s[i].elevImgR)) < c.switchEarlyBrushImageDeg) continue
     // The lowest point after this brush, and the widest split after that low point.
     for (let j = i + 1; j < s.length; j++) {
       if (!passing(s[j])) continue
@@ -205,10 +231,13 @@ export function switchEvidence(trace: FlightSample[]): { ok: boolean; brush: num
       const lowHi = maxAngle(s[j])
       const closed = low <= c.switchCloseDeg || brush - lowHi >= c.switchDipDeg
       if (!closed) continue
+      const late = s[j].phase === 'air' && s[j].tMs - takeoffMs > c.switchLateFrac * flightMs
+      const widestBefore = late ? Math.max(...s.slice(0, j).map(maxAngle)) : 0
       for (let k = j + 1; k < s.length; k++) {
         if (s[k].phase !== 'air') continue
         const split = maxAngle(s[k])
         if (split >= c.switchSplitDeg && split - lowHi >= c.switchDipDeg) {
+          if (late && split < c.switchLateSplitShare * widestBefore) continue   // closing to land
           return { ok: true, brush, low, split, lowMs: s[j].tMs }
         }
       }
@@ -268,13 +297,16 @@ export interface JumpContext {
   entryTurnDeg: number
   /** How long before take-off that turn ended (0 if it was still going). */
   entryTurnGapMs: number
+  /** Its average speed, degrees per second. */
+  entryTurnDegPerS: number
 }
 
-export const NO_JUMP_CONTEXT: JumpContext = { entryTurnDeg: 0, entryTurnGapMs: Infinity }
+export const NO_JUMP_CONTEXT: JumpContext = { entryTurnDeg: 0, entryTurnGapMs: Infinity, entryTurnDegPerS: 0 }
 
 /** A turn of at least minSpinDeg, still going or just finished at take-off: a calypso's chaîné. */
 export function hasEntryTurn(ctx: JumpContext): boolean {
-  return ctx.entryTurnDeg >= JUMP_TYPE_CONFIG.minEntryTurnDeg && ctx.entryTurnGapMs <= JUMP_TYPE_CONFIG.maxEntryGapMs
+  return ctx.entryTurnDeg >= JUMP_TYPE_CONFIG.minEntryTurnDeg && ctx.entryTurnGapMs <= JUMP_TYPE_CONFIG.maxEntryGapMs &&
+    ctx.entryTurnDegPerS >= JUMP_TYPE_CONFIG.minEntryTurnDegPerS
 }
 
 export function classifyJump(rep: JumpRepEvent, spins: readonly SpinRun[], ctx: JumpContext = NO_JUMP_CONTEXT): JumpVerdict {
